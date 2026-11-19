@@ -1,0 +1,2535 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Banals Sapins (prototype v0.13)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#1b1210;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#2a1c14;-webkit-tap-highlight-color:transparent}
+#app{max-width:480px;height:100dvh;margin:0 auto;background:#f6ead8;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.screen{display:none;flex-direction:column;flex:1;min-height:0}
+.screen.on{display:flex}
+button{font:inherit;cursor:pointer;border:0}
+
+/* MENU */
+#menu,#over{padding:28px 22px;overflow-y:auto;background:linear-gradient(#7a1f1f,#4a1212);color:#fbeedc}
+h1{font-size:44px;line-height:.95;letter-spacing:-1px;margin-top:8vh}
+h1 small{display:block;font-size:14px;font-weight:500;letter-spacing:0;opacity:.75;margin-top:10px}
+.pitch{margin:22px 0;font-size:16px;line-height:1.45;opacity:.92}
+.big{display:block;width:100%;padding:16px;border-radius:14px;background:#f5c542;color:#3a2408;font-size:19px;font-weight:700;margin-top:12px;box-shadow:0 4px 0 #a37a12}
+.big:active{transform:translateY(3px);box-shadow:0 1px 0 #a37a12}
+.big.alt{background:#fbeedc;box-shadow:0 4px 0 #b9a384}
+.opt{margin-top:22px;background:rgba(0,0,0,.22);border-radius:14px;padding:14px;font-size:14px}
+.opt h3{font-size:12px;text-transform:uppercase;letter-spacing:1px;opacity:.7;margin-bottom:8px}
+.opt label{display:flex;align-items:center;gap:10px;padding:7px 0}
+.seg{display:flex;gap:6px;margin-left:auto}
+.seg button{padding:6px 14px;border-radius:9px;background:rgba(255,255,255,.14);color:inherit;font-weight:600}
+.seg button.on{background:#f5c542;color:#3a2408}
+.note{margin-top:18px;font-size:12px;line-height:1.4;opacity:.65}
+
+/* JEU */
+.hud{display:flex;align-items:center;gap:12px;padding:10px 12px;background:#4a1212;color:#fbeedc}
+.score{font-size:20px;font-weight:700;min-width:64px}
+.amb{flex:1;height:18px;background:rgba(0,0,0,.35);border-radius:9px;position:relative;overflow:hidden}
+#ambfill{position:absolute;inset:0 auto 0 0;width:60%;background:#5dbb63;border-radius:9px;transition:width .35s,background .35s}
+.amb span{position:absolute;inset:0;text-align:center;font-size:11px;line-height:18px;letter-spacing:1px;text-transform:uppercase;font-weight:700}
+#quit{background:none;color:#fbeedc;font-size:18px;padding:2px 8px;opacity:.7}
+
+.scene{position:relative;height:40vh;min-height:230px;background:linear-gradient(#c8553d 0,#b4452f 70%,#8d3524 100%);overflow:hidden;flex-shrink:0}
+.sapins{position:absolute;left:0;right:0;background-repeat:repeat-x;transition:background-position 1s cubic-bezier(.3,.8,.3,1)}
+.s1{top:4%;height:46%;opacity:.5;background-size:auto 100%;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='110'%3E%3Cpath d='M35 6 L56 44 H46 L62 80 H8 L24 44 H14Z' fill='%23174f2b'/%3E%3Crect x='31' y='80' width='8' height='16' fill='%235a3a1e'/%3E%3C/svg%3E")}
+.s2{top:10%;height:62%;background-size:auto 100%;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='140'%3E%3Cpath d='M60 10 L86 52 H74 L96 96 H24 L46 52 H34Z' fill='%231f6b3a'/%3E%3Crect x='55' y='96' width='10' height='20' fill='%236b4423'/%3E%3Ccircle cx='60' cy='10' r='5' fill='%23f5c542'/%3E%3Ccircle cx='50' cy='62' r='3.5' fill='%23e04b4b'/%3E%3Ccircle cx='72' cy='78' r='3.5' fill='%23f5c542'/%3E%3Ccircle cx='44' cy='86' r='3.5' fill='%237ec8e3'/%3E%3C/svg%3E")}
+.shoulder{position:absolute;bottom:9%;width:34%;height:44%;border-radius:50% 50% 0 0;transition:background .3s,transform .5s}
+.shoulder.l{left:-19%}.shoulder.r{right:-19%}
+.shoulder::before{content:"";position:absolute;top:-34%;width:44%;aspect-ratio:1;border-radius:50%;background:inherit;filter:brightness(1.25)}
+.shoulder.l::before{right:6%}.shoulder.r::before{left:6%}
+.face{position:absolute;left:50%;bottom:7%;height:86%;aspect-ratio:200/250;transform:translateX(-50%);display:flex;flex-direction:column;filter:drop-shadow(0 6px 10px rgba(0,0,0,.35))}
+.band{overflow:hidden;position:relative;border-bottom:1px solid rgba(0,0,0,.28)}
+.band:last-child{border-bottom:0}
+.band svg{display:block;width:100%;height:100%}
+.band.tick svg{animation:tick .07s linear}
+.band.lock svg{animation:lock .22s cubic-bezier(.3,1.6,.5,1)}
+@keyframes tick{from{transform:translateY(-60%)}to{transform:none}}
+@keyframes lock{from{transform:translateY(-35%)}to{transform:none}}
+.table{position:absolute;left:0;right:0;bottom:0;height:12%;background:#f4f0e8;border-top:4px solid #d9d2c3;box-shadow:0 -6px 14px rgba(0,0,0,.25)}
+.table::before,.table::after{content:"";position:absolute;top:22%;width:17%;height:120%;border-radius:50%;background:#fff;border:2px solid #d4b24a}
+.table::before{left:12%}.table::after{right:12%}
+.float{position:absolute;left:50%;top:14%;transform:translateX(-50%);font-size:26px;font-weight:800;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.5);opacity:0;pointer-events:none;white-space:nowrap}
+.float.go{animation:fl 1s ease-out}
+@keyframes fl{0%{opacity:0;transform:translate(-50%,20px) scale(.7)}20%{opacity:1;transform:translate(-50%,0) scale(1.1)}100%{opacity:0;transform:translate(-50%,-34px)}}
+
+.card{padding:8px 14px;background:#fbeedc;border-bottom:2px solid #e6d3b6;font-size:15px}
+.card b{font-size:18px}
+#gdetails{font-size:12px;opacity:.65;margin-top:2px}
+.talk{flex:1;min-height:0;overflow-y:auto;padding:12px 14px 16px;display:flex;flex-direction:column;gap:10px}
+.bubble{background:#fff;border-radius:16px 16px 16px 4px;padding:12px 14px;font-size:17px;line-height:1.35;box-shadow:0 2px 0 #e0cfb3;animation:pop .18s ease-out}
+.bubble.me{align-self:flex-end;background:#2f5d3a;color:#fff;border-radius:16px 16px 4px 16px;box-shadow:none;font-size:15px;max-width:92%}
+.tag{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;padding:2px 8px;border-radius:6px;margin-bottom:6px;color:#fff}
+.tag.win{background:#3d9a4b}.tag.meh{background:#b58a1c}.tag.lose{background:#c23a2e}
+@keyframes pop{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
+.replies{display:flex;flex-direction:column;gap:8px}
+.rep{text-align:left;padding:13px 14px;border-radius:13px;background:#f5c542;color:#3a2408;font-size:16px;line-height:1.3;font-weight:600;box-shadow:0 3px 0 #a37a12;animation:pop .18s ease-out both}
+.rep:nth-child(2){animation-delay:.05s}.rep:nth-child(3){animation-delay:.1s}
+.rep:active{transform:translateY(2px);box-shadow:0 1px 0 #a37a12}
+.rep.up{background:#7ec8e3;box-shadow:0 3px 0 #3f8ba8;position:relative;overflow:hidden}
+.rep.up i{position:absolute;left:0;bottom:0;height:4px;background:#1f5d78;width:100%;animation:shrink linear forwards}
+@keyframes shrink{to{width:0}}
+.rep.next{background:#4a1212;color:#fbeedc;box-shadow:0 3px 0 #260808;text-align:center}
+.rep small{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.7;margin-bottom:3px}
+
+/* FIN */
+#over h2{font-size:30px;margin-top:3vh}
+.final{font-size:64px;font-weight:800;line-height:1;margin:14px 0 4px;color:#f5c542}
+.recap{margin-top:20px;font-size:13px;line-height:1.4}
+.recap h3{font-size:12px;text-transform:uppercase;letter-spacing:1px;opacity:.7;margin-bottom:8px}
+.recap div{background:rgba(0,0,0,.22);border-radius:10px;padding:9px 11px;margin-bottom:7px}
+.recap em{display:block;opacity:.7;font-size:11.5px;margin-top:4px;font-style:normal}
+.recap .w{color:#9fe0a7}.recap .l{color:#ff9d92}.recap .m{color:#f5c542}
+
+/* ===== v0.6 : conversation façon messagerie, échelle de position, sans points ni rounds ===== */
+.band{border-bottom:0}
+.face.spinning .band{border-bottom:1px solid rgba(0,0,0,.28)}
+.hud{gap:10px;font-size:12.5px;padding:8px 12px}
+.hud .where{flex:1;min-width:0;line-height:1.25}
+.hud .where b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card{display:block;padding:7px 14px 8px;text-align:center;border-bottom:2px solid #e6d3b6}
+.card b{font-size:18px}
+#gdetails{font-size:12px;opacity:.65}
+/* fiche du convive : identité, puis deux cases (positionnement, sensibilité), puis la réglette */
+.card{padding:8px 12px 8px;text-align:left}
+.idline{display:flex;align-items:baseline;gap:8px}
+.card .idline b{font-size:20px}
+.idline span{font-size:12.5px;color:#7c6a55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.fact{background:#fff;border-radius:10px;padding:6px 9px;box-shadow:0 1px 0 #e0cfb3;min-width:0}
+.fact small{display:block;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:#a08d75}
+.card .fact b{display:block;font-size:15px;line-height:1.2}
+.fact span{display:block;font-size:11.5px;color:#6b5a48;line-height:1.2;margin-top:1px}
+.fact.pol{border-left:4px solid #4a1212}.fact.sen{border-left:4px solid #f5c542}
+.scaleLbl{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:#a08d75;margin-top:8px}
+/* échelle de position : une réglette. Chaque libellé est sous son cran, celui du convive est en gras sous le curseur */
+.scale{margin:14px 16px 0;user-select:none}
+.track{position:relative;height:6px;border-radius:3px;background:linear-gradient(90deg,#b5483a 0%,#c9a23a 50%,#3d9a4b 100%);opacity:.9}
+.track i{position:absolute;top:-4px;width:2px;height:14px;background:#2a1c14;opacity:.35;transform:translateX(-1px)}
+.track .from{position:absolute;top:-3px;width:12px;height:12px;border-radius:50%;border:2px solid #2a1c14;background:#fbeedc;transform:translateX(-6px);opacity:.55}
+.track .mk{position:absolute;top:-11px;width:28px;height:28px;border-radius:50%;background:#2a1c14;color:#fff;font-size:13px;font-weight:800;display:grid;place-items:center;transform:translateX(-14px);transition:left 1.1s cubic-bezier(.3,1.5,.4,1);box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.scale.up .mk{animation:glow 1.6s ease-out}
+@keyframes glow{0%{box-shadow:0 0 0 0 rgba(61,154,75,.9)}30%{box-shadow:0 0 0 14px rgba(61,154,75,.35);background:#1f7a34;transform:translateX(-14px) scale(1.35)}100%{box-shadow:0 0 0 22px rgba(61,154,75,0)}}
+.ticks{position:relative;height:30px;margin-top:14px}
+.ticks span{position:absolute;top:0;width:68px;margin-left:-34px;text-align:center;font-size:9.5px;line-height:1.15;color:#a08d75;transition:color .4s}
+.ticks span:first-child{margin-left:-14px;text-align:left}
+.ticks span:last-child{margin-left:-54px;text-align:right}
+.ticks span.cur{color:#2a1c14;font-weight:800;font-size:11px}
+.scale.up .ticks span.cur{animation:jump .8s cubic-bezier(.3,1.7,.5,1);color:#1f7a34}
+@keyframes jump{0%{transform:scale(.6)}50%{transform:scale(1.3)}100%{transform:scale(1)}}
+.scene{height:20vh;min-height:140px}
+.face{height:92%;bottom:5%}
+.scene.hit .face{animation:shake .45s}
+@keyframes shake{0%,100%{transform:translateX(-50%)}15%{transform:translateX(calc(-50% - 12px)) rotate(-3deg)}35%{transform:translateX(calc(-50% + 10px)) rotate(3deg)}55%{transform:translateX(calc(-50% - 6px))}75%{transform:translateX(calc(-50% + 4px))}}
+.scene.block .face{animation:lean .45s}
+@keyframes lean{0%,100%{transform:translateX(-50%)}40%{transform:translateX(-50%) translateY(-6px) scale(1.03)}}
+.stamp{position:absolute;left:50%;top:50%;z-index:6;font-size:40px;font-weight:900;letter-spacing:1px;padding:4px 16px;border:5px solid;border-radius:12px;transform:translate(-50%,-50%) rotate(-8deg);opacity:0;pointer-events:none;white-space:nowrap;background:rgba(255,255,255,.9)}
+.stamp.hit{color:#1f7a34;border-color:#1f7a34}
+.stamp.block{color:#6b6b6b;border-color:#6b6b6b;font-size:32px}
+.stamp.go{animation:stamp 1.1s cubic-bezier(.2,1.4,.4,1) forwards}
+@keyframes stamp{0%{opacity:0;transform:translate(-50%,-50%) rotate(-8deg) scale(2.6)}18%{opacity:1;transform:translate(-50%,-50%) rotate(-8deg) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-70%) rotate(-8deg) scale(1)}}
+.gain{position:absolute;inset:0;z-index:7;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(31,122,52,.88);color:#fff;text-align:center;pointer-events:none}
+.gain.go{display:flex;animation:gain 2.4s ease-out forwards}
+.gain .arrow{font-size:46px;line-height:1;animation:arrowUp 1s cubic-bezier(.3,1.6,.5,1)}
+.gain .to{font-size:25px;font-weight:900;margin-top:2px}
+.gain .fromto{font-size:12.5px;opacity:.9;margin-top:4px}
+@keyframes gain{0%{opacity:0}10%{opacity:1}80%{opacity:1}100%{opacity:0}}
+@keyframes arrowUp{0%{transform:translateY(40px) scale(.5);opacity:0}60%{transform:translateY(-8px) scale(1.2);opacity:1}100%{transform:none}}
+/* conversation */
+.chat{flex:1;min-height:0;overflow-y:auto;padding:10px 12px 6px;display:flex;flex-direction:column;gap:7px;scroll-behavior:smooth}
+.chat > :first-child{margin-top:auto}
+.day{align-self:center;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:#8a7862;padding:2px 0}
+.msg{max-width:84%;padding:9px 12px;font-size:15.5px;line-height:1.32;border-radius:16px;animation:pop .2s ease-out;position:relative}
+.msg .from{display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;opacity:.6;margin-bottom:2px}
+.msg.them{align-self:flex-start;background:#fff;border-bottom-left-radius:4px;box-shadow:0 2px 0 #e0cfb3}
+.msg.tiers{align-self:flex-start;background:#efe2cb;color:#5a4a3a;border-bottom-left-radius:4px;font-size:14.5px}
+.msg.me{align-self:flex-end;background:#2f5d3a;color:#fff;border-bottom-right-radius:4px}
+.msg .badge{position:absolute;top:-8px;right:-6px;font-size:9.5px;font-weight:900;letter-spacing:.6px;text-transform:uppercase;color:#fff;border-radius:6px;padding:2px 6px}
+.badge.hit{background:#1f7a34}.badge.block{background:#77706a}
+.msg.typing{color:#8a7862;letter-spacing:3px;font-weight:900;padding:6px 14px}
+.out{align-self:stretch;border-radius:14px;padding:12px;text-align:center;color:#fff;animation:rise .4s cubic-bezier(.3,1.4,.5,1)}
+@keyframes rise{from{transform:translateY(20px) scale(.94);opacity:0}}
+.out.win{background:#1f7a34}.out.nul{background:#a37a12}.out.lose{background:#8a3a2e}
+.out h3{font-size:20px;font-weight:900}
+.out p{font-size:13.5px;margin-top:3px;opacity:.95}
+.composer{flex-shrink:0;padding:8px 12px 12px;background:#efe2cb;border-top:2px solid #e0cfb3;display:flex;flex-direction:column;gap:7px;min-height:58px}
+.composer:empty::before{content:"…";color:#a8967c;text-align:center;font-weight:900;letter-spacing:4px;padding-top:8px}
+.composer .hint{font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;font-weight:800;color:#8a7862;text-align:right}
+.rep{font-size:15px;padding:11px 13px}
+.rep.ghost{background:transparent;color:#6b3a2a;box-shadow:none;border:0;text-align:center;font-size:13px;padding:4px;font-weight:600;text-decoration:underline}
+/* écrans */
+.modes{display:flex;flex-direction:column;gap:4px}
+.big small{display:block;font-size:12px;font-weight:500;opacity:.8;margin-top:3px}
+#setup,#bilan{padding:20px 18px;overflow-y:auto;background:linear-gradient(#7a1f1f,#4a1212);color:#fbeedc}
+#setup h2,#bilan h2{font-size:26px}
+.ages{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:4px}
+.ages button{padding:10px 6px;border-radius:10px;background:rgba(255,255,255,.14);color:#fbeedc;font-weight:700;font-size:14px}
+.ages button.on{background:#f5c542;color:#3a2408}
+.field{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:14px}
+.field label{width:96px;opacity:.85}
+.field select,.row select{flex:1;min-width:0;padding:8px;border-radius:9px;border:0;font:inherit;font-size:14px;background:#fbeedc;color:#2a1c14}
+.row{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:14px}
+.row .lien{width:118px;font-weight:700;line-height:1.15}
+.row button{background:rgba(255,255,255,.14);color:#fbeedc;border-radius:8px;padding:7px 9px}
+.tools{display:flex;gap:6px;margin-top:10px}
+.tools button{flex:1;padding:9px 6px;border-radius:10px;background:rgba(255,255,255,.14);color:#fbeedc;font-size:13px;font-weight:600}
+.guests{display:flex;flex-direction:column;gap:8px;margin:14px 0}
+.voter{background:rgba(0,0,0,.22);border-radius:12px;padding:8px 12px 10px 8px;font-size:12.5px;display:flex;gap:10px;align-items:center;opacity:0;animation:pop .25s ease-out forwards}
+.voter svg{width:46px;flex-shrink:0}
+.voter .inf{flex:1;min-width:0}
+.voter b{font-size:14px}
+.voter .mini{position:relative;height:5px;border-radius:3px;background:linear-gradient(90deg,#b5483a,#c9a23a,#3d9a4b);margin:9px 8px 4px}
+.voter .mini .f{position:absolute;top:-3px;width:11px;height:11px;border-radius:50%;border:2px solid #fbeedc;transform:translateX(-5px);opacity:.7}
+.voter .mini .m{position:absolute;top:-5px;width:15px;height:15px;border-radius:50%;background:#fbeedc;transform:translateX(-7px)}
+.voter.up .mini .m{background:#9fe0a7;box-shadow:0 0 0 4px rgba(159,224,167,.3)}
+.voter .mv{display:block;opacity:.9}
+.voter.up .mv{color:#9fe0a7;font-weight:700}
+.recap a{color:#f5c542}
+
+/* composition du dîner */
+.ages button,.bords button{padding:10px 6px;border-radius:10px;background:rgba(255,255,255,.14);color:#fbeedc;font-weight:700;font-size:14px}
+.bords{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.ages button.on,.bords button.on{background:#f5c542;color:#3a2408}
+.pc{display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.2);border-radius:12px;padding:6px 8px;margin-top:6px}
+.pc svg{width:44px;flex-shrink:0;background:#c8553d;border-radius:8px}
+.pc .inf{flex:1;min-width:0;font-size:13px;line-height:1.3}
+.pc b{font-size:15px}
+.pc .cd{display:block;font-weight:700;color:#f5c542}
+.pc .cv{display:block;font-size:12px;opacity:.85}
+.pc button{background:rgba(255,255,255,.14);color:#fbeedc;border-radius:8px;padding:7px 9px}
+/* v0.10 : bustes et fond en images, sans table */
+.scene.pics{height:30vh;min-height:210px}
+.scene.pics .sapins,.scene.pics .shoulder,.scene.pics .table{display:none}
+.scene.pics .face{bottom:0;height:96%;z-index:3}
+.scene.pics.haspic .face{display:none}
+.fondimg{position:absolute;top:0;left:0;height:100%;max-width:none;transition:transform .8s cubic-bezier(.3,.7,.2,1);filter:brightness(.8) saturate(.92) blur(.6px)}
+.conv{position:absolute;bottom:0;left:50%;height:100%;aspect-ratio:1/1;transition:transform .8s cubic-bezier(.3,.7,.2,1),filter .8s;transform-origin:50% 100%;pointer-events:none;display:flex;justify-content:center}
+.conv img{width:100%;height:100%;object-fit:contain;display:block}
+.conv svg{height:92%;width:auto;align-self:flex-end}
+.scene.pics::after{content:"";position:absolute;left:0;right:0;bottom:0;height:16%;z-index:4;pointer-events:none;background:linear-gradient(transparent,rgba(0,0,0,.38))}
+.scene.hit .conv.cur img{animation:shakeI .45s}
+@keyframes shakeI{0%,100%{transform:none}15%{transform:translateX(-12px) rotate(-3deg)}35%{transform:translateX(10px) rotate(3deg)}55%{transform:translateX(-6px)}75%{transform:translateX(4px)}}
+.scene.block .conv.cur img{animation:leanI .45s}
+@keyframes leanI{0%,100%{transform:none}40%{transform:translateY(-6px) scale(1.03)}}
+.pc img.pm,.voter img.pm{width:46px;height:46px;object-fit:cover;object-position:50% 12%;border-radius:8px;background:#c8553d;flex-shrink:0}
+/* v0.12 */
+.hud .prog{flex:1;display:flex;gap:6px;align-items:center;min-width:0;padding:2px 0}
+.pg{width:34px;height:34px;border-radius:50%;overflow:hidden;border:2px solid transparent;opacity:.4;flex:none;background:#7a2a22;display:block;transition:transform .3s,opacity .3s,border-color .3s}
+.pg img.pm,.pg svg{width:100%;height:100%;object-fit:cover;object-position:50% 12%;display:block;border-radius:0;background:none}
+.pg.ok{opacity:1;border-color:#5fd07a}
+.pg.ko{opacity:.75;border-color:#b5483a;filter:grayscale(.6)}
+.pg.cur{opacity:1;transform:scale(1.14);filter:none}
+.pg.cur:not(.ok):not(.ko){border-color:#f5c542}
+.stamp{top:14%;font-size:21px;font-weight:800;letter-spacing:.3px;padding:7px 20px;border:0;border-radius:999px;transform:translate(-50%,0);box-shadow:0 6px 18px rgba(0,0,0,.28)}
+.stamp.hit{color:#fff;background:#1f8a3c}
+.stamp.block{color:#fff;background:rgba(70,66,62,.9);font-size:17px}
+.stamp.go{animation:stampIn 1.6s ease-out forwards}
+@keyframes stampIn{0%{opacity:0;transform:translate(-50%,12px) scale(.94)}16%{opacity:1;transform:translate(-50%,0) scale(1.05)}28%{transform:translate(-50%,0) scale(1)}80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-6px)}}
+.scene.hit .face,.scene.block .face,.scene.hit .conv.cur img,.scene.block .conv.cur img{animation:none}
+.gain{inset:auto 0 0 0;padding:9px 8px 11px;background:rgba(31,122,52,.93)}
+.gain .arrow{font-size:20px}
+.gain .to{font-size:19px}
+#bTitle{text-align:center;margin-top:4vh}
+.score{display:flex;align-items:baseline;justify-content:center;gap:8px}
+.score b{font-size:92px;line-height:.95;font-weight:900;color:#f5c542;display:inline-block}
+.score b.bump{animation:bump .28s ease-out}
+@keyframes bump{0%{transform:scale(1.35)}100%{transform:scale(1)}}
+.score i{font-style:normal;font-size:36px;font-weight:700;opacity:.8}
+.scoreLbl{display:block;font-size:13px;text-transform:uppercase;letter-spacing:1.5px;opacity:.85;font-weight:600;margin-top:2px}
+#bSub{text-align:center;min-height:1.4em;font-size:16px;opacity:1 !important;margin-top:8px !important}
+.voter{opacity:1;animation:none}
+.voter .mini .m{transition:left .28s cubic-bezier(.3,1.5,.5,1),background .2s}
+.voter.flat{animation:flat .5s ease-out}
+@keyframes flat{0%{background:rgba(200,50,40,.75)}100%{background:rgba(0,0,0,.22)}}
+.voter.flat .mini .m{background:#e08a80}
+/* v0.13 */
+.card{padding:8px 12px 6px}
+.facts{margin-top:0}
+.fact{padding:6px 9px 7px}
+.card .fact.pol b{font-size:17px;line-height:1.15}
+.fact.pol span{font-size:11.5px;margin-top:1px}
+.fact.pol em{display:inline-block;font-style:normal;margin-top:4px;font-size:11px;font-weight:800;color:#4a1212;background:#f3e3cd;border-radius:6px;padding:1px 7px}
+.scale{margin-top:16px}
+.ticks{height:26px}
+.chat{position:relative}
+.rep{font-size:14.5px;padding:10px 12px;line-height:1.28}
+.composer{gap:6px;padding:8px 12px 10px}
+.scene.pics{height:27vh;min-height:176px}
+@media (max-height:720px){.scene.pics{height:22vh;min-height:140px}.card .fact.pol b{font-size:16px}}
+.touches{display:block;text-align:center;font-size:15px;margin-top:8px;opacity:.95}
+.touches b{color:#f5c542;font-size:18px}
+.voter{border:2px solid transparent;transition:border-color .3s}
+.voter.up{border-color:#5fd07a}
+.voter .mini .m{transition:left .7s cubic-bezier(.3,1.25,.5,1),background .2s}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="menu" class="screen on">
+    <h1>Banals<br>Sapins</h1>
+    <p class="pitch">Ce soir, c'est toi qui défends Édouard. Adapte ta réponse à la sensibilité de chaque convive pour lui faire changer de position.</p>
+    <div class="modes">
+      <button class="big" id="mRapide">Partie rapide</button>
+      <button class="big alt" id="mDiner">Dîner de famille<small>Choisis les invités !</small></button>
+    </div>
+  </div>
+
+  <div id="setup" class="screen">
+    <h2>Ton dîner</h2>
+    <div class="opt" style="margin-top:12px">
+      <h3>Ton âge</h3>
+      <div class="ages" id="ages"></div>
+    </div>
+    <div class="opt">
+      <h3>Ma famille est</h3>
+      <div class="bords" id="bords"></div>
+    </div>
+    <div class="opt">
+      <h3>À table · <span id="count"></span></h3>
+      <div id="rows"></div>
+      <div class="tools"><button id="tRnd">Tirer une autre tablée</button></div>
+    </div>
+    <button class="big" id="go">Passer à table</button>
+    <button class="big alt" id="sBack">Retour</button>
+    <p class="note">Ton âge fixe les profils des convives. « Ma famille est » fixe leurs bords politiques. Les couples sont du même bord.</p>
+  </div>
+
+  <div id="game" class="screen">
+    <div class="hud">
+      <div class="prog" id="prog"></div>
+      <button id="quit" aria-label="Quitter">✕</button>
+    </div>
+    <div class="card">
+      <div class="facts">
+        <div class="fact pol"><b id="gname"></b><span id="gmeta"></span><em id="gpos"></em><span id="gcand" hidden></span></div>
+        <div class="fact sen"><small>Sensible à</small><b id="gsens"></b><span id="gsensd"></span></div>
+      </div>
+      <div class="scale" id="scale"></div>
+    </div>
+    <div class="scene" id="scene">
+      <div class="sapins s1" id="s1"></div><div class="sapins s2" id="s2"></div>
+      <div class="shoulder l" id="shL"></div><div class="shoulder r" id="shR"></div>
+      <div class="face" id="face"></div>
+      <div class="table"></div>
+      <div class="stamp" id="stamp"></div>
+      <div class="gain" id="gain"></div>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div class="composer" id="composer"></div>
+  </div>
+
+  <div id="bilan" class="screen">
+    <h2 id="bTitle"></h2>
+    <p id="bSub" style="opacity:.85;margin-top:4px"></p>
+    <div class="guests" id="bGrid"></div>
+    <button class="big" id="bNext"></button>
+    <button class="big alt" id="bAlt"></button>
+    <button class="big alt" id="bMenu">Menu</button>
+    <div class="recap" id="bRecap"></div>
+  </div>
+</div>
+
+<script>
+/* ====================================================================
+   CONTENU v0.8. Tout ce qui est éditable sans toucher au moteur est ici.
+
+   Un MATCH oppose le joueur à un convive, sur un FIL écrit à la main :
+   une ouverture, puis 3 ou 4 échanges. À chaque échange, deux réponses :
+   l'une TOUCHE, l'autre est PARÉE.
+     r0, le recadrage (facultatif) : quand l'ouverture attaque ou défend une
+                 personne en général, aucune mesure ne répond. La bonne réponse
+                 amène le convive à nommer un sujet précis.
+     r1, l'angle : a et b visent deux sensibilités (ra, rb). Le convive est tiré
+                 sensible à l'une des deux, et sa fiche l'affiche. aT/aP et
+                 bT/bP sont ses réactions selon qu'il est touché ou qu'il pare.
+     r2, la riposte : il porte un coup (valeur, fait, contre, esquive).
+                 ok désigne la réponse qui traite l'objection.
+     r3, la conclusion : il lâche sa réserve. ok désigne la réponse qui
+                 reprend son critère (crit).
+   Chaque réponse = [texte, page du programme ou null].
+   RÈGLES D'ÉCRITURE
+   - Toute réponse qui cite une mesure nomme « Édouard ».
+   - Face à une ouverture sur un thème, les deux réponses accueillent d'abord la
+     remarque (« c'est vrai », « je comprends »), puis rebondissent sur le programme.
+   - La réponse parée n'est jamais un argument creux. C'est une vraie mesure ou un
+     vrai fait, qui répond à côté, aggrave la crainte exprimée, ou arrive trop tôt.
+   - La réaction du convive et sa relance s'affichent en un seul message : la
+     relance (obj, res) doit se lire après l'une comme après l'autre réaction.
+   - fin commence par « N'empêche, » (gagné), « Bon, » (nul), « Non, » (perdu),
+     pour se lire après une dernière réaction touchée ou parée.
+   Source : edouardphilippe.fr/programme, mise à jour du 12/11/2026.
+   Affirmations de campagne, non vérifiées. aSourcer signale les faits hors programme.
+   ageMin / ageMax : le fil ne se joue qu'avec un convive de cet âge.
+   ==================================================================== */
+const SRC = {
+  travail:"travail", securite:"securite", justice:"justice", immigration:"immigration", defense:"defense",
+  comptes:"comptes-publics", retraites:"retraites", ecole:"ecole", famille:"famille", energie:"energie",
+  climat:"adaptation-climatique", entreprises:"entreprises", sommaire:""
+};
+
+/* FILS : une manche écrite à la main. Voir le schéma en tête de fichier. */
+const FILS = [
+{
+ "id": "retraites-age",
+ "th": "Retraites",
+ "fam": "Le fond",
+ "type": "B",
+ "who": [
+  "rn-historique",
+  "abstention"
+ ],
+ "ageMin": 35,
+ "ageMax": 64,
+ "ouv": "65 ans ! Il veut nous faire crever au boulot, ton Philippe.",
+ "r1": {
+  "ra": "justice",
+  "rb": "portefeuille",
+  "a": [
+   "Pas toi : Édouard garde les carrières longues. Un Français sur trois partira avant 65.",
+   "retraites"
+  ],
+  "aT": "Il les garde, les carrières longues ? J'ai commencé à 17 ans, moi. Ça change la donne.",
+  "aP": "Les carrières longues, il manque toujours un trimestre à l'arrivée. Moi, ce que je regarde, c'est ce que je toucherai.",
+  "b": [
+   "En échange, avec Édouard : aucune baisse des pensions, aucune hausse de cotisations.",
+   "retraites"
+  ],
+  "bT": "Si la pension ne bouge pas et qu'on me prend rien de plus, c'est déjà un marché plus honnête.",
+  "bP": "Encore heureux qu'il baisse pas les pensions. Moi, je te parle de ceux qui se sont usés tôt."
+ },
+ "r2": {
+  "coup": "valeur",
+  "obj": "Et ceux qui ont le dos cassé à 58 ans, ils font quoi jusqu'à 65 ?",
+  "ok": "a",
+  "a": [
+   "L'âge, ça dit rien de l'usure. Édouard garde le départ à 60 ans en cas d'incapacité, 62 en invalidité.",
+   "retraites"
+  ],
+  "aR": "60 ans quand le corps a lâché, d'accord. Au moins, il fait pas semblant que tout le monde tient jusqu'au bout.",
+  "b": [
+   "Pour eux, Édouard ajoute de la capitalisation : chacun se monte une épargne retraite en plus.",
+   "retraites"
+  ],
+  "bR": "De l'épargne ? Avec un dos cassé et un petit salaire, on met rien de côté. Tu réponds à côté."
+ },
+ "r3": {
+  "res": "Admettons. Mais la retraite, on nous l'a déjà réformée en force. Pourquoi je le croirais, lui ?",
+  "crit": "le savoir avant de voter",
+  "ok": "a",
+  "a": [
+   "Parce qu'Édouard l'écrit avant l'élection, noir sur blanc. Tu sais ce que tu votes.",
+   "retraites"
+  ],
+  "aR": "C'est vrai que les autres, on l'a découvert après.",
+  "b": [
+   "Parce qu'après, Édouard confie les retraites aux syndicats et au patronat. C'est plus un président qui décide.",
+   "retraites"
+  ],
+  "bR": "Les syndicats ont signé des choses qui m'ont pas plu non plus. Ça ne me dit pas pourquoi lui."
+ },
+ "fin": {
+  "win": "N'empêche, je dis pas que je vote pour lui, mais je vais regarder de près.",
+  "nul": "Bon, on est pas d'accord, mais tu dis pas que des bêtises.",
+  "lose": "Non, vraiment, 65 ans, ça ne passe pas."
+ },
+ "pont": {
+  "say": "Regarde ton oncle : quarante ans de chantier, deux ans de retraite.",
+  "a": "Je sais. Il me manque aussi.",
+  "b": "Deux ans. C'est rien, deux ans.",
+  "aR": "À moi aussi.",
+  "bR": "Rien du tout."
+ }
+},
+{
+ "id": "vote-jeunes",
+ "th": "Vie politique",
+ "fam": "Le vote",
+ "type": "D",
+ "who": [
+  "abstention",
+  "centre-hesitant"
+ ],
+ "ageMax": 32,
+ "tiers": "Et toi, tu vas voter cette année, au moins ?",
+ "ouv": "Pour quoi faire ? Aucun ne parle des jeunes.",
+ "r1": {
+  "ra": "avenir",
+  "rb": "portefeuille",
+  "a": [
+   "Si, un : Édouard ouvre un plan d'épargne retraite à chaque jeune, avec 500 € de l'État au premier emploi.",
+   "retraites"
+  ],
+  "aT": "500 € qui m'attendent, à mon nom ? Au moins, quelqu'un pense à dans trente ans.",
+  "aP": "La retraite ? J'en suis à payer mon loyer, moi.",
+  "b": [
+   "Écoute ça : avec Édouard, les heures au-delà de 35 h sont sans impôt ni cotisation. Dans les 1 000 € par an au SMIC.",
+   "travail"
+  ],
+  "bT": "Mille balles par an, ça, ça me parle tout de suite.",
+  "bP": "Bosser plus pour s'en sortir, génial. Et dans vingt ans, j'en suis où ?"
+ },
+ "r2": {
+  "coup": "esquive",
+  "obj": "Mais bon, ils promettent tous des trucs. Après l'élection, plus personne.",
+  "ok": "b",
+  "a": [
+   "Celle-là est dans le programme d'Édouard, chiffres compris. Tu peux la lire ce soir.",
+   "sommaire"
+  ],
+  "aR": "Ils ont tous un programme avec des chiffres.",
+  "b": [
+   "T'as raison de te méfier. Il te faudrait quoi, pour y croire ?",
+   null
+  ],
+  "bR": "Je sais pas... Qu'il fasse un truc tout de suite, qu'on puisse vérifier."
+ },
+ "r3": {
+  "res": "Il en a un, lui, de truc vérifiable vite ?",
+  "crit": "du vérifiable, vite",
+  "ok": "a",
+  "a": [
+   "Ouais : Édouard fait un référendum dès le début du mandat. En quelques mois, tu sais s'il tient parole.",
+   "comptes"
+  ],
+  "aR": "Quelques mois, ça se surveille.",
+  "b": [
+   "Ouais : avec Édouard, tes heures sup nettes, tu les vois sur ta fiche de paie.",
+   "travail"
+  ],
+  "bR": "Quand ? Dans trois ans, quand tout sera voté ?"
+ },
+ "fin": {
+  "win": "N'empêche, tu m'as donné envie d'aller voter. Je te dis pas pour qui.",
+  "nul": "Bon, je vais y réfléchir. Peut-être.",
+  "lose": "Non, franchement, ça ne me donne pas envie d'y aller."
+ }
+},
+{
+ "id": "gestion",
+ "th": "Dette et déficits",
+ "fam": "Les personnes",
+ "type": "A",
+ "who": [
+  "droite-liberale"
+ ],
+ "aSourcer": "Lisnard à Cannes, Philippe au Havre et à Matignon : faits hors programme, à sourcer.",
+ "ouv": "Lisnard, lui, il a géré une ville. Il sait ce que c'est, un budget.",
+ "r0": {
+  "ok": "a",
+  "a": [
+   "Cannes, c'est du sérieux, je dis pas. Toi, t'attends quoi d'un président, en premier ?",
+   null
+  ],
+  "aR": "Qu'il arrête d'empiler : les taxes, les normes, la dépense.",
+  "b": [
+   "Édouard aussi : Le Havre, puis un gouvernement.",
+   null
+  ],
+  "bR": "Un gouvernement qui dépensait. Moi, j'attends d'un président qu'il arrête d'empiler : les taxes, les normes, la dépense."
+ },
+ "r1": {
+  "ra": "liberte",
+  "rb": "ordre",
+  "a": [
+   "Ça tombe bien : Édouard s'engage sur zéro nouvelle norme pendant cinq ans.",
+   "entreprises"
+  ],
+  "aT": "Cinq ans sans nouvelle norme ? Pour une boîte, c'est de l'oxygène.",
+  "aP": "Les normes, bien. Mais qui verrouille la dépense ? Sans règle, ça repart.",
+  "b": [
+   "Ça tombe bien : Édouard veut une règle d'or dans la Constitution, votée par référendum.",
+   "comptes"
+  ],
+  "bT": "Un verrou dans la Constitution, voilà qui tient la dépense.",
+  "bP": "Une règle de plus. Moi, je voudrais surtout qu'on m'en enlève."
+ },
+ "r2": {
+  "coup": "fait",
+  "obj": "Tout le monde promet ça. Avec plus de 5 % de déficit, les promesses ne tiennent pas.",
+  "ok": "a",
+  "a": [
+   "Des chiffres, alors : Édouard remplace pas un fonctionnaire sur trois. 250 000 postes en moins sur le quinquennat.",
+   "comptes"
+  ],
+  "aR": "250 000 postes, ça se compte chaque année.",
+  "b": [
+   "Édouard baisse de 50 milliards les impôts de production, pour relancer la machine.",
+   "entreprises"
+  ],
+  "bR": "Baisser les impôts avec 5 % de déficit ? Tu creuses le trou dont je te parle."
+ },
+ "r3": {
+  "res": "Admettons. Mais pourquoi lui plutôt que Lisnard ?",
+  "crit": "avoir déjà géré, son critère dès l'ouverture",
+  "ok": "b",
+  "a": [
+   "Parce qu'Édouard supprime 50 milliards d'aides improductives aux entreprises.",
+   "entreprises"
+  ],
+  "aR": "C'est une bonne mesure. Ça ne me dit pas pourquoi lui.",
+  "b": [
+   "Sur ton critère à toi : Édouard a tenu un budget de ville, puis celui d'un pays.",
+   null
+  ],
+  "bR": "Maire, puis Premier ministre. Oui, il a géré plus gros."
+ },
+ "fin": {
+  "win": "N'empêche, je vais regarder ton candidat de plus près.",
+  "nul": "Bon, chacun son champion. Tu te défends bien.",
+  "lose": "Non, je reste sur Lisnard. Lui, au moins, il compte."
+ }
+},
+{
+ "id": "immigration",
+ "th": "Immigration",
+ "fam": "Le fond",
+ "type": "A",
+ "who": [
+  "rn-historique",
+  "rn-rural-recent",
+  "primo-bardella"
+ ],
+ "ouv": "Sur l'immigration, y a que le RN qui ose. Les autres parlent.",
+ "r1": {
+  "ra": "ordre",
+  "rb": "fierte",
+  "a": [
+   "Le programme d'Édouard, c'est diviser l'immigration par deux. Noir sur blanc.",
+   "immigration"
+  ],
+  "aT": "Par deux, écrit noir sur blanc ? Je savais pas.",
+  "aP": "Des chiffres, ils en ont tous. Ce que je veux, c'est un pays qui se fait respecter.",
+  "b": [
+   "Édouard dénonce l'accord de 1968 avec l'Algérie. Ça, c'est pas juste parler.",
+   "immigration"
+  ],
+  "bT": "Dénoncer l'accord de 68 : enfin quelqu'un qui baisse pas les yeux.",
+  "bP": "Un vieux traité, ça ne change pas ce que je vois. Combien d'entrées en moins ?"
+ },
+ "r2": {
+  "coup": "fait",
+  "obj": "Tous l'ont promis. Et à la fin, ceux qu'on doit expulser restent là.",
+  "ok": "a",
+  "a": [
+   "C'est là que ça coince, ouais. Édouard rétablit la double peine : un étranger condamné pour un délit, il est expulsé.",
+   "immigration"
+  ],
+  "aR": "La double peine, c'est concret.",
+  "b": [
+   "D'où les quotas d'Édouard : on choisit qui vient bosser.",
+   "immigration"
+  ],
+  "bR": "Des quotas pour en faire venir ? Je te parle de ceux qui doivent partir."
+ },
+ "r3": {
+  "res": "Admettons. Mais c'est l'ancien Premier ministre de Macron. Pourquoi il le ferait maintenant ?",
+  "crit": "un engagement qu'on peut vérifier",
+  "ok": "a",
+  "a": [
+   "Il s'engage sur la durée : Édouard suspend le regroupement familial pendant tout le quinquennat.",
+   "immigration"
+  ],
+  "aR": "Suspendu cinq ans, ça se vérifie dès la première année.",
+  "b": [
+   "Édouard aligne les aides aux étrangers sur la moyenne européenne.",
+   "immigration"
+  ],
+  "bR": "C'est bien, mais ça ne me dit pas pourquoi je le croirais."
+ },
+ "fin": {
+  "win": "N'empêche, s'il fait la moitié de ça, je regarderai.",
+  "nul": "Bon, tu connais ton programme. Je garde mon bulletin.",
+  "lose": "Non. Marine, elle, on sait ce qu'elle pense."
+ }
+},
+{
+ "id": "dealers",
+ "th": "Délinquance",
+ "fam": "Le fond",
+ "type": "B",
+ "who": [
+  "rn-rural-recent",
+  "rn-historique",
+  "droite-ordre"
+ ],
+ "ouv": "Les dealers, tout le monde les connaît et personne ne fait rien.",
+ "r1": {
+  "ra": "ordre",
+  "rb": "portefeuille",
+  "a": [
+   "Insupportable, ouais. Édouard met un état d'urgence narco dans les zones les plus touchées, avec interpellations de nuit.",
+   "securite"
+  ],
+  "aT": "De nuit, chez eux. Voilà qui est sérieux.",
+  "aP": "On les arrête, ils ressortent. Tant qu'ils gardent l'argent, ils reviennent.",
+  "b": [
+   "Édouard fait saisir les avoirs des trafiquants, même ceux qu'ils peuvent pas justifier.",
+   "securite"
+  ],
+  "bT": "Leur prendre l'argent : c'est là que ça leur fait mal.",
+  "bP": "L'argent, ils le cachent. Moi, je veux les voir embarqués."
+ },
+ "r2": {
+  "coup": "valeur",
+  "obj": "Et les gamins de quinze ans qui font le guet, on les met en prison aussi ?",
+  "ok": "a",
+  "a": [
+   "La prison, c'est pas fait pour eux. Pour les mineurs, Édouard prévoit des établissements de réinsertion et de soin.",
+   "securite"
+  ],
+  "aR": "Les sortir de là plutôt que les enfermer avec les caïds. Ça se tient.",
+  "b": [
+   "Eux aussi : Édouard veut une sanction dès la première infraction.",
+   "justice"
+  ],
+  "bR": "Sanctionner un gosse de quinze ans comme un caïd ? T'as pas écouté ma question."
+ },
+ "r3": {
+  "res": "De toute façon, la justice les relâche. C'est ça, le fond du problème.",
+  "crit": "une sanction certaine",
+  "ok": "a",
+  "a": [
+   "C'est le fond du truc. Édouard veut une peine courte dès la première infraction, comme dans les pays du Nord.",
+   "justice"
+  ],
+  "aR": "Courte mais certaine. Si c'est appliqué, ça change tout.",
+  "b": [
+   "Édouard donne aux maires un pouvoir de sanction.",
+   "securite"
+  ],
+  "bR": "Le maire fait ce qu'il peut. Moi, je te parle des juges."
+ },
+ "fin": {
+  "win": "N'empêche, il a regardé le problème en face.",
+  "nul": "Bon, sur le papier, c'est bien. Je demande à voir.",
+  "lose": "Non, ce sont des annonces. On en reparle quand ce sera calme en bas."
+ }
+},
+{
+ "id": "impots",
+ "th": "Impôts",
+ "fam": "Le fond",
+ "type": "B",
+ "who": [
+  "droite-liberale",
+  "centre-hesitant",
+  "droite-ordre"
+ ],
+ "ouv": "Quel que soit le président, à la fin, il invente une taxe.",
+ "r1": {
+  "ra": "portefeuille",
+  "rb": "ordre",
+  "a": [
+   "Pas celui-là : Édouard s'engage sur zéro nouvel impôt pendant cinq ans.",
+   "comptes"
+  ],
+  "aT": "Cinq ans sans mauvaise surprise sur ma feuille d'impôt. Si c'est tenu, ça me va.",
+  "aP": "Promettre, c'est facile. Qu'est-ce qui l'en empêche vraiment ?",
+  "b": [
+   "Édouard met une règle d'or dans la Constitution : plus de déficit au-delà de 3 %.",
+   "comptes"
+  ],
+  "bT": "Dans la Constitution, même le suivant ne pourra pas y toucher.",
+  "bP": "La Constitution, c'est loin. Moi, je regarde ce que je paie l'an prochain."
+ },
+ "r2": {
+  "coup": "fait",
+  "obj": "Et l'argent, il le trouve où ? Les économies, on les annonce et on les fait jamais.",
+  "ok": "a",
+  "a": [
+   "Édouard dit où il coupe : la moitié de l'effort sur les dépenses sociales, à commencer par un RSA limité dans le temps.",
+   "comptes"
+  ],
+  "aR": "Au moins, il dit où. C'est rare.",
+  "b": [
+   "Par la croissance : Édouard baisse de 50 milliards les impôts de production.",
+   "entreprises"
+  ],
+  "bR": "La croissance qui paie tout, on me l'a déjà vendue."
+ },
+ "r3": {
+  "res": "Et si ça ne suffit pas ? Ils finissent toujours par augmenter la TVA.",
+  "crit": "un verrou qui s'impose à lui",
+  "ok": "a",
+  "a": [
+   "C'est à ça que sert la règle d'or d'Édouard : votée par référendum, elle s'impose à lui aussi.",
+   "comptes"
+  ],
+  "aR": "Si c'est le pays qui la vote, il pourra pas s'asseoir dessus.",
+  "b": [
+   "Édouard supprime aussi 50 milliards d'aides improductives aux entreprises.",
+   "entreprises"
+  ],
+  "bR": "Une économie de plus sur le papier. Qu'est-ce qui le retient, le jour où ça dérape ?"
+ },
+ "fin": {
+  "win": "N'empêche, un candidat qui s'attache les mains, je vais lire ça.",
+  "nul": "Bon, t'as des arguments. J'attends le premier budget.",
+  "lose": "Non, ils disent tous ça en novembre."
+ }
+},
+{
+ "id": "climat",
+ "th": "Environnement",
+ "fam": "Le fond",
+ "type": "B",
+ "who": [
+  "ecolo",
+  "gauche-moderee"
+ ],
+ "ouv": "Tant qu'on parle pas du climat, tout le reste, c'est du bruit.",
+ "r1": {
+  "ra": "avenir",
+  "rb": "justice",
+  "a": [
+   "C'est le sujet qui commande tout, ouais. Édouard crée un fonds d'adaptation au climat : 2 milliards par an.",
+   "climat"
+  ],
+  "aT": "Deux milliards chaque année pour se préparer à ce qui vient. Là, il regarde loin.",
+  "aP": "S'adapter, d'accord. Mais qui peut se payer la transition, aujourd'hui ?",
+  "b": [
+   "Édouard donne la même aide pour une électrique d'occasion que pour une neuve.",
+   "energie"
+  ],
+  "bT": "L'occasion aidée comme le neuf : enfin une mesure pour ceux qui achètent jamais de neuf.",
+  "bP": "Une prime auto, c'est du court terme. Et dans vingt ans ?"
+ },
+ "r2": {
+  "coup": "fait",
+  "obj": "Des annonces, il y en a tous les ans. Ça ne dit pas où il agit vraiment.",
+  "ok": "a",
+  "a": [
+   "Édouard cible trois chantiers : la rénovation, le fret, l'industrie lourde.",
+   "energie"
+  ],
+  "aR": "Le fret et l'industrie lourde plutôt que mes pailles en plastique. Là, c'est sérieux.",
+  "b": [
+   "Sur l'énergie : Édouard lance quatorze réacteurs nucléaires.",
+   "energie"
+  ],
+  "bR": "Le nucléaire. Tu sais à qui tu parles ?"
+ },
+ "r3": {
+  "res": "Et le nucléaire, alors ? C'est ça, son écologie ?",
+  "crit": "sortir du pétrole et du gaz",
+  "ok": "a",
+  "a": [
+   "Sur l'atome, on sera pas d'accord. Mais le but d'Édouard, c'est le tien : sortir du pétrole et du gaz.",
+   "energie"
+  ],
+  "aR": "Si l'objectif, c'est la fin du gaz, on vise au moins la même chose.",
+  "b": [
+   "Le nucléaire d'Édouard, c'est du courant fait en France, sans dépendre de personne.",
+   "energie"
+  ],
+  "bR": "L'indépendance, c'est pas mon sujet. Je te parle du climat."
+ },
+ "fin": {
+  "win": "N'empêche, il a un plan, je le reconnais.",
+  "nul": "Bon, tu connais le dossier. Ça ne me suffit pas.",
+  "lose": "Non, c'est de l'écologie de plateau télé."
+ }
+},
+{
+ "id": "famille",
+ "th": "Inégalités sociales",
+ "fam": "Le fond",
+ "type": "B",
+ "who": [
+  "lfi",
+  "abstention",
+  "gauche-moderee"
+ ],
+ "ouv": "Pour un jeune couple, avoir un enfant, c'est devenu un luxe.",
+ "r1": {
+  "ra": "justice",
+  "rb": "portefeuille",
+  "a": [
+   "Ça devrait pas, non. Édouard verse jusqu'à 350 € par mois dès le premier enfant aux ménages les plus modestes.",
+   "famille"
+  ],
+  "aT": "Pour les plus modestes d'abord, et dès le premier. Ça, c'est juste.",
+  "aP": "Et ceux juste au-dessus du plafond ? Ils travaillent, et ils ont rien.",
+  "b": [
+   "Avec Édouard, les classes moyennes paient pas d'impôt sur le revenu pendant trois ans après une naissance.",
+   "famille"
+  ],
+  "bT": "Trois ans sans impôt sur le revenu, ça se compte en vrais euros.",
+  "bP": "Ceux qui paient pas d'impôt n'y gagnent rien. Et les plus fragiles ?"
+ },
+ "r2": {
+  "coup": "fait",
+  "obj": "Les aides, c'est bien. Mais sans place en crèche, tu retournes bosser comment ?",
+  "ok": "a",
+  "a": [
+   "Tu mets le doigt dessus. Édouard lance un plan Marshall pour la garde d'enfants.",
+   "famille"
+  ],
+  "aR": "S'y a vraiment des places, ça change la vie.",
+  "b": [
+   "Édouard y a pensé : au retour de congé parental, tu bosses à 80 % payé 100 % pendant deux mois.",
+   "travail"
+  ],
+  "bR": "Deux mois, et après ? Il me faut une place, pas un sursis."
+ },
+ "r3": {
+  "res": "Et le logement ? Un enfant de plus, c'est une chambre de plus.",
+  "crit": "pouvoir s'agrandir",
+  "ok": "a",
+  "a": [
+   "Prévu : Édouard crée un prêt à taux zéro à la naissance de chaque enfant.",
+   "famille"
+  ],
+  "aR": "Un prêt à taux zéro pour pousser les murs. Ça répond à ma question.",
+  "b": [
+   "Édouard double les plafonds de donation. Les parents peuvent aider plus.",
+   "famille"
+  ],
+  "bR": "Les donations, c'est pour ceux dont les parents ont de quoi donner."
+ },
+ "fin": {
+  "win": "N'empêche, sur la famille, il a travaillé. Je m'y attendais pas.",
+  "nul": "Bon, y a du bon. Ça ne fait pas un vote.",
+  "lose": "Non, ce sont des mesurettes."
+ },
+ "pont": {
+  "say": "Ma sœur a mis deux ans à avoir une place en crèche. Deux ans !",
+  "a": "Deux ans ? Le petit a eu le temps d'apprendre à marcher.",
+  "b": "M'en parle pas, ma voisine garde ceux de tout l'immeuble.",
+  "aR": "Tu rigoles, mais c'est presque ça.",
+  "bR": "Voilà. On se débrouille entre nous, comme d'hab."
+ }
+},
+{
+ "id": "surveillance",
+ "th": "Terrorisme",
+ "fam": "Le fond",
+ "type": "B",
+ "who": [
+  "ecolo",
+  "lfi",
+  "anarchiste"
+ ],
+ "ouv": "Au nom de la sécurité, on nous surveille tous un peu plus chaque année.",
+ "r1": {
+  "ra": "liberte",
+  "rb": "justice",
+  "a": [
+   "Ça m'inquiète aussi. Édouard limite la reconnaissance faciale à des zones et à des durées précises.",
+   "securite"
+  ],
+  "aT": "Limitée dans l'espace et dans le temps. C'est le minimum, mais c'est écrit.",
+  "aP": "Limitée, mais chez qui ? Toujours dans les mêmes quartiers.",
+  "b": [
+   "Édouard refuse d'envoyer l'armée dans les quartiers. Un soldat, c'est pas formé pour ça.",
+   "securite"
+  ],
+  "bT": "Pas de soldats face aux habitants. Là-dessus, il a raison.",
+  "bP": "Encore heureux. Ça ne dit rien des caméras."
+ },
+ "r2": {
+  "coup": "valeur",
+  "obj": "Une exception, ça finit toujours par devenir la règle.",
+  "ok": "a",
+  "a": [
+   "D'où les bornes d'Édouard : narcotrafic et émeutes, pour une durée limitée.",
+   "securite"
+  ],
+  "aR": "Si c'est borné dans le texte, ça se contrôle.",
+  "b": [
+   "Ce qu'Édouard renforce surtout, c'est le renseignement, pas les caméras.",
+   "securite"
+  ],
+  "bR": "Plus de renseignement, c'est exactement ce qui m'inquiète."
+ },
+ "r3": {
+  "res": "Et les musulmans, dans tout ça ? C'est toujours eux qu'on vise.",
+  "crit": "ne viser personne pour ce qu'il est",
+  "ok": "a",
+  "a": [
+   "Son programme le dit : la France garantit à chacun la liberté de croire. Édouard vise des organisations.",
+   "securite"
+  ],
+  "aR": "Des organisations, pas des croyants. Si c'est tenu, ça me va.",
+  "b": [
+   "Édouard vise les Frères musulmans, pas les musulmans.",
+   "securite"
+  ],
+  "bR": "On commence toujours par nommer une organisation. Qui garantit que ça s'arrête là ?"
+ },
+ "fin": {
+  "win": "N'empêche, il met des limites. Je lui signe pas un chèque en blanc.",
+  "nul": "Bon, tu m'as répondu sur certains points. Pas sur tous.",
+  "lose": "Non, ce sont des garde-fous en carton."
+ },
+ "pont": {
+  "say": "Ils ont mis une caméra au bout de ma rue. Pour un local à vélos.",
+  "a": "Un local à vélos. Sacrée menace.",
+  "b": "Souris, t'es filmé.",
+  "aR": "Ça te fait rire. Moi, moyen.",
+  "bR": "Très drôle."
+ }
+},
+{
+ "id": "anar-vote",
+ "th": "Vie politique",
+ "fam": "Le vote",
+ "type": "B",
+ "who": [
+  "anarchiste"
+ ],
+ "ouv": "Voter, c'est choisir son maître. Je joue pas à ça.",
+ "r0": {
+  "ok": "a",
+  "a": [
+   "Je vais pas te faire la morale. Si tu pouvais changer un seul truc demain, ce serait quoi ?",
+   null
+  ],
+  "aR": "Que les gens décident eux-mêmes, là où ils vivent. Pas un type à Paris.",
+  "b": [
+   "Édouard commence par un référendum. Là, tu choisis pas un maître, tu réponds à une question.",
+   "comptes"
+  ],
+  "bR": "Une question qu'il a choisie. Moi, ce que je voudrais, c'est que les gens décident là où ils vivent, pas un type à Paris."
+ },
+ "r1": {
+  "ra": "liberte",
+  "rb": "justice",
+  "a": [
+   "Décider sur place, y en a dans son programme : Édouard donne plus d'autonomie à chaque école, sans attendre le ministère.",
+   "ecole"
+  ],
+  "aT": "Une école qui décide sans le ministère... C'est petit, mais ça va dans mon sens.",
+  "aP": "Une école avec un chef à sa tête. Et ceux qui travaillent, ils décident quand ?",
+  "b": [
+   "Décider entre concernés, y en a aussi : Édouard confie les retraites aux syndicats et au patronat, pas à l'État.",
+   "retraites"
+  ],
+  "bT": "L'État qui lâche les retraites à ceux qui cotisent ? C'est presque de l'autogestion.",
+  "bP": "Les syndicats et le patronat, ce sont d'autres chefs. Je te parle de décider là où on vit."
+ },
+ "r2": {
+  "coup": "valeur",
+  "obj": "Tout ça, c'est un pouvoir qui en remplace un autre. Le problème, c'est le chef.",
+  "ok": "a",
+  "a": [
+   "Un homme seul, je me méfie aussi. C'est pour ça que la première décision d'Édouard passe par un référendum.",
+   "comptes"
+  ],
+  "aR": "C'est encore lui qui pose la question. Mais au moins, on répond.",
+  "b": [
+   "Édouard donne aussi un pouvoir de sanction aux maires. Ça se décide plus près des gens.",
+   "securite"
+  ],
+  "bR": "Un petit chef à la place du grand. Tu confirmes ce que je dis."
+ },
+ "r3": {
+  "res": "Et si je y vais toujours pas, voter ? Tu vas me faire la leçon ?",
+  "crit": "qu'on respecte son choix, sans leçon",
+  "ok": "a",
+  "a": [
+   "Non. Mais si un jour une question te donne envie de répondre, ce sera peut-être le référendum d'Édouard.",
+   "comptes"
+  ],
+  "aR": "Une question, pas un homme. Ça, je peux l'entendre.",
+  "b": [
+   "Non. Mais Édouard annonce tout avant l'élection : tu sais exactement ce que tu refuses.",
+   "sommaire"
+  ],
+  "bR": "Je sais très bien ce que je refuse : qu'on décide à ma place."
+ },
+ "fin": {
+  "win": "N'empêche, ton référendum, j'irai peut-être y mettre mon grain de sel.",
+  "nul": "Bon, tu m'as pas fait la leçon. C'est déjà rare.",
+  "lose": "Non. Encore un sermon sur le devoir civique."
+ }
+},
+{
+ "id": "retailleau",
+ "th": "Délinquance",
+ "fam": "Les personnes",
+ "type": "A",
+ "who": [
+  "droite-ordre"
+ ],
+ "aSourcer": "Départ de Matignon en 2020 et création de son parti : faits hors programme, à sourcer.",
+ "ouv": "Retailleau, au moins, c'est la droite qui s'excuse pas.",
+ "r0": {
+  "ok": "a",
+  "a": [
+   "Il est clair, lui, je dis pas. T'attends quoi en premier, toi ?",
+   null
+  ],
+  "aR": "De l'ordre. Qu'une peine prononcée soit une peine faite.",
+  "b": [
+   "Édouard s'excuse pas non plus : il veut diviser l'immigration par deux.",
+   "immigration"
+  ],
+  "bR": "L'immigration, bon. Moi, ce que j'attends d'abord, c'est de l'ordre : une peine prononcée, c'est une peine faite."
+ },
+ "r1": {
+  "ra": "ordre",
+  "rb": "fierte",
+  "a": [
+   "Alors écoute : Édouard supprime le juge d'application des peines.",
+   "justice"
+  ],
+  "aT": "Plus personne pour défaire ce que le tribunal a décidé. Voilà de l'ordre.",
+  "aP": "De la procédure. Moi, je pense d'abord à ceux qui portent l'uniforme.",
+  "b": [
+   "Alors écoute : Édouard met des peines planchers pour ceux qui agressent un policier, un pompier ou un prof.",
+   "securite"
+  ],
+  "bT": "Qu'on protège ceux qui servent le pays, enfin.",
+  "bP": "Très bien pour eux. Mais la peine, derrière, elle est faite ou pas ?"
+ },
+ "r2": {
+  "coup": "fait",
+  "obj": "Des lois, on en vote chaque année. Sans places de prison, rien ne s'applique.",
+  "ok": "a",
+  "a": [
+   "C'est ça, le vrai blocage. Édouard prévoit une loi consacrée aux prisons.",
+   "justice"
+  ],
+  "aR": "Une loi rien que pour les prisons. Si elle est financée, d'accord.",
+  "b": [
+   "D'où les peines courtes d'Édouard, dès la première infraction.",
+   "justice"
+  ],
+  "bR": "Courtes ou longues, il faut des cellules. Tu réponds pas."
+ },
+ "r3": {
+  "res": "Admettons. Mais il a gouverné avec Macron. La droite, la vraie, ne fait pas ça.",
+  "crit": "des actes, pas une étiquette",
+  "ok": "a",
+  "a": [
+   "Juge-le sur un acte : Édouard met la retraite à 65 ans dans son programme, avant l'élection.",
+   "retraites"
+  ],
+  "aR": "65 ans, annoncé avant. Il faut du cran, je le reconnais.",
+  "b": [
+   "Édouard a quitté Matignon en 2020 et monté son propre parti.",
+   null
+  ],
+  "bR": "Un parti de plus au centre. Ça ne fait pas un homme de droite."
+ },
+ "fin": {
+  "win": "N'empêche, je le rangerai plus avec les autres.",
+  "nul": "Bon, t'as des arguments de droite. Dommage que ce soit pour lui.",
+  "lose": "Non. La droite Macron-compatible, très peu pour moi."
+ }
+},
+{
+ "id": "sante",
+ "th": "Santé",
+ "fam": "Le fond",
+ "type": "B",
+ "who": [
+  "abstention",
+  "gauche-moderee",
+  "rn-rural-recent"
+ ],
+ "ouv": "Six mois pour un rendez-vous chez l'ophtalmo. Et ils vont encore couper dans la santé.",
+ "r1": {
+  "ra": "justice",
+  "rb": "avenir",
+  "a": [
+   "Six mois, c'est n'importe quoi. Et Édouard sort la santé de son plan d'économies.",
+   "comptes"
+  ],
+  "aT": "Pas de coupes dans la santé, c'est écrit ? Alors je respire.",
+  "aP": "Ne pas couper, c'est le minimum. Et dans vingt ans, avec tous ces anciens, on fait comment ?",
+  "b": [
+   "Édouard mise sur la prévention : soigner tôt, avant que ça coûte cher à tout le monde.",
+   "comptes"
+  ],
+  "bT": "La prévention, enfin. On attend toujours que ça casse pour réparer.",
+  "bP": "La prévention, c'est pour dans vingt ans. Aujourd'hui, on coupe ou on coupe pas ?"
+ },
+ "r2": {
+  "coup": "fait",
+  "obj": "Ils disent tous qu'ils toucheront pas à la santé. L'argent, il le prend où ?",
+  "ok": "a",
+  "a": [
+   "Édouard le dit : l'effort porte sur les autres dépenses sociales, à commencer par un RSA limité dans le temps.",
+   "comptes"
+  ],
+  "aR": "Donc il coupe, mais pas à l'hôpital. Au moins, c'est dit.",
+  "b": [
+   "Sur la fonction publique : Édouard remplace pas un fonctionnaire sur trois.",
+   "comptes"
+  ],
+  "bR": "Et les infirmières, c'est pas des fonctionnaires ? Tu viens de m'inquiéter davantage."
+ },
+ "r3": {
+  "res": "Alors l'été, dans les EHPAD, on fait quoi des anciens ?",
+  "crit": "du concret pour les personnes âgées",
+  "ok": "a",
+  "a": [
+   "Édouard y a pensé : des réseaux de froid pour les EHPAD.",
+   "climat"
+  ],
+  "aR": "Du frais dans les EHPAD. Ça, c'est du concret.",
+  "b": [
+   "Édouard crée un fonds d'adaptation au climat de 2 milliards par an.",
+   "climat"
+  ],
+  "bR": "Un fonds. Et dans les chambres, cet été, il fera combien ?"
+ },
+ "fin": {
+  "win": "N'empêche, sur la santé, il m'inquiète moins.",
+  "nul": "Bon, tu m'as répondu. Je ai toujours pas mon rendez-vous.",
+  "lose": "Non, ce sont des promesses de bien-portant."
+ },
+ "pont": {
+  "say": "Ça me fait penser à mamie. Elle a failli y rester, à la canicule.",
+  "a": "Elle va mieux, au moins ?",
+  "b": "Je me souviens, tu nous avais fait peur.",
+  "aR": "Ça va. Mais dans sa chambre, il faisait 34.",
+  "bR": "On a tous eu peur. Dans sa chambre, il faisait 34."
+ }
+},
+{
+ "id": "ecole",
+ "th": "École",
+ "fam": "Le fond",
+ "type": "B",
+ "who": [
+  "gauche-moderee",
+  "lfi",
+  "centre-hesitant"
+ ],
+ "ouv": "Plus personne ne veut être prof. Vu comme on les paie et comme on les traite.",
+ "r1": {
+  "ra": "justice",
+  "rb": "ordre",
+  "a": [
+   "Une honte, ouais. Édouard augmente les profs de 20 % en moyenne sur le quinquennat.",
+   "ecole"
+  ],
+  "aT": "Vingt pour cent. Là, on parle enfin de considération.",
+  "aP": "Le salaire, d'accord. Mais se faire insulter pour 20 % de plus, ça reste se faire insulter.",
+  "b": [
+   "Édouard met des peines planchers pour ceux qui agressent un prof.",
+   "securite"
+  ],
+  "bT": "Qu'on protège enfin ceux qui sont devant les élèves.",
+  "bP": "La sanction, toujours. Et la fiche de paie, elle bouge ?"
+ },
+ "r2": {
+  "coup": "fait",
+  "obj": "Des promesses pour les profs, il y en a à chaque élection. Pourquoi ça changerait ?",
+  "ok": "a",
+  "a": [
+   "Édouard fixe une cible qu'on peut vérifier : rejoindre la moyenne européenne des salaires enseignants.",
+   "ecole"
+  ],
+  "aR": "Une cible comparable d'un pays à l'autre. Ça, on peut le vérifier.",
+  "b": [
+   "Parce qu'Édouard recrée des écoles normales pour former les profs.",
+   "ecole"
+  ],
+  "bR": "Mieux former des gens qu'on arrive plus à recruter. Tu réponds pas à ma question."
+ },
+ "r3": {
+  "res": "Et les classes à trente ? On fait plus cours, on fait garderie.",
+  "crit": "le nombre d'élèves par classe",
+  "ok": "a",
+  "a": [
+   "C'est par là qu'Édouard commence : moins d'élèves par classe en maternelle et en primaire.",
+   "ecole"
+  ],
+  "aR": "Moins d'élèves chez les petits. C'est par là qu'il faut commencer, oui.",
+  "b": [
+   "Édouard interdit le portable de la primaire au lycée. La classe redevient une classe.",
+   "ecole"
+  ],
+  "bR": "Le portable, très bien. Ils seront toujours trente."
+ },
+ "fin": {
+  "win": "N'empêche, s'il fait ça pour l'école, je le regarderai autrement.",
+  "nul": "Bon, y a de bonnes idées. J'ai appris à me méfier.",
+  "lose": "Non, ce sont des annonces de rentrée."
+ },
+ "pont": {
+  "say": "Ma collègue a lâché en octobre. Dix ans de métier.",
+  "a": "Elle fait quoi, maintenant ?",
+  "b": "En octobre ? Même pas jusqu'aux vacances.",
+  "aR": "Elle vend des assurances. Elle dort mieux.",
+  "bR": "Un mardi, elle est pas revenue."
+ }
+},
+{
+ "id": "prix",
+ "th": "Prix et coût de la vie",
+ "fam": "Le fond",
+ "type": "B",
+ "who": [
+  "abstention",
+  "rn-historique",
+  "primo-bardella"
+ ],
+ "ouv": "Tout augmente sauf ma paye. Et aucun candidat n'y changera rien.",
+ "r1": {
+  "ra": "portefeuille",
+  "rb": "justice",
+  "a": [
+   "Je vais pas te dire le contraire. Avec Édouard, les heures au-delà de 35 h sont sans impôt ni cotisation : dans les 1 000 € par an au SMIC.",
+   "travail"
+  ],
+  "aT": "Mille euros dans ma poche. Faut les faire, les heures, mais ça se compte.",
+  "aP": "Travailler plus pour s'en sortir, encore. Et ceux qui peuvent pas faire plus d'heures ?",
+  "b": [
+   "Édouard verse jusqu'à 350 € par mois dès le premier enfant aux ménages modestes.",
+   "famille"
+  ],
+  "bT": "Aider d'abord ceux qui ont le moins, c'est normal.",
+  "bP": "Des allocations pour les autres. Et celui qui bosse, il a quoi ?"
+ },
+ "r2": {
+  "coup": "valeur",
+  "obj": "C'est toujours à nous de faire des efforts. Et les patrons, ils en font ?",
+  "ok": "a",
+  "a": [
+   "Si : Édouard supprime 50 milliards d'aides aux entreprises, celles jugées improductives.",
+   "entreprises"
+  ],
+  "aR": "Couper des aides aux boîtes, je aurais pas cru.",
+  "b": [
+   "Ils y gagnent aussi, c'est voulu : Édouard supprime les cotisations patronales sur les heures au-delà de la 37e.",
+   "entreprises"
+  ],
+  "bR": "Donc le patron gagne encore. Tu réponds à ma question à l'envers."
+ },
+ "r3": {
+  "res": "Et si mon salaire ne bouge pas, tout ça, c'est pour les autres.",
+  "crit": "son salaire net",
+  "ok": "a",
+  "a": [
+   "C'est ton net qu'Édouard vise : la protection sociale reposerait plus seulement sur le travail.",
+   "travail"
+  ],
+  "aR": "Plus de net sans supplier le patron. Si ça arrive, je signe.",
+  "b": [
+   "Édouard s'engage au moins là-dessus : zéro nouvel impôt pendant cinq ans.",
+   "comptes"
+  ],
+  "bR": "Ne pas me prendre plus, ça ne me donne rien de plus."
+ },
+ "fin": {
+  "win": "N'empêche, il a pensé à ceux qui bossent. Je vais regarder.",
+  "nul": "Bon, c'est mieux que rien. Ça ne remplit pas le caddie.",
+  "lose": "Non. À la caisse, ça ne change rien."
+ }
+},
+{
+ "id": "ia",
+ "th": "Chômage",
+ "fam": "Le fond",
+ "type": "B",
+ "who": [
+  "primo-bardella",
+  "centre-hesitant"
+ ],
+ "ageMax": 62,
+ "ouv": "Avec l'IA, dans cinq ans, la moitié des boulots auront disparu.",
+ "r1": {
+  "ra": "justice",
+  "rb": "avenir",
+  "a": [
+   "Personne peut te jurer le contraire. Édouard crée un droit à la reconversion pour ceux dont le métier est menacé par l'IA.",
+   "travail"
+  ],
+  "aT": "Un droit, pas une promesse de stage. Ça protège.",
+  "aP": "Se reconvertir, d'accord. Mais vers quoi ? Il prépare quoi, pour après ?",
+  "b": [
+   "Édouard veut former 100 000 ingénieurs par an, contre 40 000 aujourd'hui.",
+   "ecole"
+  ],
+  "bT": "Former ceux qui feront les machines plutôt que les subir. Là, il regarde devant.",
+  "bP": "Des ingénieurs, très bien pour eux. Et ceux dont le poste saute ?"
+ },
+ "r2": {
+  "coup": "esquive",
+  "obj": "De toute façon, personne ne maîtrise ça. On verra bien.",
+  "ok": "b",
+  "a": [
+   "Édouard a un plan : faire de la France un leader de la puissance de calcul.",
+   "sommaire"
+  ],
+  "aR": "Un leader. Tout le monde veut être leader. On verra bien, je te dis.",
+  "b": [
+   "Personne maîtrise tout, c'est sûr. À quoi tu verrais qu'un candidat prend ça au sérieux ?",
+   null
+  ],
+  "bR": "S'il commençait par l'école. Qu'on apprenne pas aux gamins à tout déléguer."
+ },
+ "r3": {
+  "res": "Il en fait quoi, lui, de l'IA à l'école ?",
+  "crit": "l'école d'abord",
+  "ok": "a",
+  "a": [
+   "Édouard interdit toute IA à l'école avant le collège.",
+   "ecole"
+  ],
+  "aR": "D'abord apprendre à penser seul. Ça me va.",
+  "b": [
+   "Édouard prévoit un assistant IA de soutien scolaire au lycée.",
+   "ecole"
+  ],
+  "bR": "Donc il leur en donne. C'est l'inverse de ce que je te dis."
+ },
+ "fin": {
+  "win": "N'empêche, il a un plan. Je pensais pas qu'un politique avait regardé ça.",
+  "nul": "Bon, c'est déjà plus que les autres. Ça ne me rassure pas.",
+  "lose": "Non, ce sont des mots-clés."
+ },
+ "pont": {
+  "say": "Mon petit cousin fait ses rédacs avec ChatGPT. Il a eu 16.",
+  "a": "16 ? Il a dit merci, au moins ?",
+  "b": "Moi, je copiais sur le voisin. C'était plus dur.",
+  "aR": "Même pas.",
+  "bR": "Et tu te faisais choper."
+ }
+},
+{
+ "id": "ukraine",
+ "th": "Crises internationales",
+ "fam": "Le fond",
+ "type": "B",
+ "who": [
+  "rn-historique",
+  "abstention",
+  "rn-rural-recent"
+ ],
+ "ouv": "L'Ukraine, c'est pas notre guerre. Qu'on s'occupe d'abord des Français.",
+ "r1": {
+  "ra": "fierte",
+  "rb": "ordre",
+  "a": [
+   "Les nôtres d'abord, je comprends. Édouard veut qu'au moins 1 % de la richesse des pays européens de l'OTAN parte dans des armes fabriquées en Europe.",
+   "defense"
+  ],
+  "aT": "Acheter européen plutôt qu'américain. Ne dépendre de personne, ça oui.",
+  "aP": "L'Europe, l'OTAN... Moi, je te parle de tenir le pays, ici.",
+  "b": [
+   "Édouard fait passer la réserve de 45 000 à 250 000 personnes, pour défendre le pays.",
+   "defense"
+  ],
+  "bT": "Des gens d'ici prêts à défendre le pays. Ça, c'est solide.",
+  "bP": "Des réservistes, pour quoi faire, si on achète tout aux Américains ?"
+ },
+ "r2": {
+  "coup": "valeur",
+  "obj": "Et pendant ce temps, l'argent part là-bas au lieu d'aller aux Français.",
+  "ok": "a",
+  "a": [
+   "Chaque euro compte, ouais. D'où l'idée d'Édouard : produire ici, passer de 100 000 à 700 000 obus par an.",
+   "defense"
+  ],
+  "aR": "Si c'est pour produire plutôt que pour donner, ça change un peu la chose.",
+  "b": [
+   "Soutenir l'Ukraine, c'est tenir la guerre loin de chez nous : Édouard lui promet un soutien plein.",
+   "defense"
+  ],
+  "bR": "Loin de chez nous, c'est ce qu'on dit toujours. C'est exactement ce que je te reproche."
+ },
+ "r3": {
+  "res": "Et nos gamins ? Ils vont les envoyer là-bas ?",
+  "crit": "que personne ne soit forcé",
+  "ok": "a",
+  "a": [
+   "Non. Ce qu'Édouard propose, c'est un service militaire volontaire, 50 000 places par an.",
+   "defense"
+  ],
+  "aR": "Volontaire. Tant que personne n'est forcé, ça me va.",
+  "b": [
+   "Non. Et pour que personne ose nous attaquer, Édouard modernise la dissuasion nucléaire.",
+   "defense"
+  ],
+  "bR": "La bombe ne me dit pas ce qu'on fera de nos gamins."
+ },
+ "fin": {
+  "win": "N'empêche, se défendre soi-même, je comprends.",
+  "nul": "Bon, on sera pas d'accord sur l'Ukraine. Sur le reste, t'as marqué un point.",
+  "lose": "Non, c'est encore de l'argent qui part."
+ },
+ "pont": {
+  "say": "Le fils des voisins s'est engagé, tu sais. Vingt ans.",
+  "a": "Ah bon ? Sa mère doit plus dormir.",
+  "b": "C'est courageux, à cet âge.",
+  "aR": "Elle dort plus, non.",
+  "bR": "Courageux, ouais. Ou inconscient."
+ }
+},
+{
+ "id": "normes",
+ "th": "Environnement",
+ "fam": "Le fond",
+ "type": "B",
+ "who": [
+  "rn-rural-recent",
+  "droite-liberale",
+  "droite-ordre"
+ ],
+ "ouv": "L'écologie, c'est toujours pour nous interdire quelque chose.",
+ "r1": {
+  "ra": "liberte",
+  "rb": "portefeuille",
+  "a": [
+   "On l'a trop vécu comme ça. Édouard s'engage : zéro règle française en plus des règles européennes pour les agriculteurs.",
+   "climat"
+  ],
+  "aT": "Plus de surenchère de normes. Enfin.",
+  "aP": "Les normes, bon. Mais changer de voiture ou de chaudière, qui paie ?",
+  "b": [
+   "Édouard préfère aider : la même prime pour une électrique d'occasion que pour une neuve.",
+   "energie"
+  ],
+  "bT": "D'occasion aussi ? Une neuve, je l'achèterai jamais. Là, ça me parle.",
+  "bP": "Une prime pour changer de voiture. On me pousse encore à faire ce que je ai pas demandé."
+ },
+ "r2": {
+  "coup": "fait",
+  "obj": "Ils disent tous « pas d'écologie punitive ». Et à la fin, y a toujours une interdiction.",
+  "ok": "a",
+  "a": [
+   "Les formules, je m'en méfie aussi. Édouard l'écrit : aucune nouvelle norme pendant cinq ans.",
+   "entreprises"
+  ],
+  "aR": "Si c'est écrit, on pourra le lui ressortir.",
+  "b": [
+   "Édouard mise sur le nucléaire plutôt que sur les interdictions : quatorze réacteurs.",
+   "energie"
+  ],
+  "bR": "Très bien, le nucléaire. Ça n'empêche pas la prochaine interdiction."
+ },
+ "r3": {
+  "res": "Et l'eau ? Chaque été, on nous rationne, et on nous interdit de stocker.",
+  "crit": "l'eau",
+  "ok": "a",
+  "a": [
+   "Là, Édouard est de ton côté : il veut accélérer le stockage de l'eau pour l'agriculture.",
+   "climat"
+  ],
+  "aR": "Stocker l'hiver pour tenir l'été. Du bon sens, enfin.",
+  "b": [
+   "Édouard veut réutiliser 10 % des eaux usées, contre moins de 1 % aujourd'hui.",
+   "climat"
+  ],
+  "bR": "L'eau des stations d'épuration. Moi, je te parle de garder l'eau de pluie."
+ },
+ "fin": {
+  "win": "N'empêche, s'il tient ça, il aura plus fait que les autres.",
+  "nul": "Bon, du bon sens sur le papier. On verra sur le terrain.",
+  "lose": "Non. Encore un qui a jamais mis de bottes."
+ },
+ "pont": {
+  "say": "Tu verrais le potager cet été. Cramé. Interdit d'arroser dès juin.",
+  "a": "Même les tomates ?",
+  "b": "Chez nous pareil, la pelouse c'est de la paille.",
+  "aR": "Surtout les tomates.",
+  "bR": "Voilà. Et ça fait trois étés."
+ }
+}
+];
+
+/* REPROCHES v0.10. Ouvertures en attaque sur le candidat. Trois échanges :
+   1. def : défense à l'affect, sans mesure. La bonne réponse parle à l'angle du convive (son ressort), l'autre parle à un autre angle.
+   2. r2 et 3. r3 : retour au programme, comme dans les autres fils.
+   Tout fait cité hors programme a sa source dans « sources ». */
+const SENS_DIT = {
+  "portefeuille": "Moi, ce que je regarde, c'est ce qu'il me reste à la fin du mois.",
+  "ordre": "Moi, ce que je regarde, c'est si les règles tiennent.",
+  "justice": "Moi, ce que je regarde, c'est qui paie et qui est épargné.",
+  "liberte": "Moi, ce que je regarde, c'est si on me laisse vivre comme je l'entends.",
+  "avenir": "Moi, ce que je regarde, c'est ce qu'on laisse aux jeunes.",
+  "fierte": "Moi, ce que je regarde, c'est si le pays se fait respecter."
+};
+const REPROCHES = [
+ {
+  "id": "r-80",
+  "th": "Les 80 km/h",
+  "type": "C",
+  "who": [
+   "rn-rural-recent",
+   "rn-historique",
+   "primo-bardella",
+   "droite-ordre",
+   "abstention"
+  ],
+  "sources": "80 km/h en vigueur le 1er juillet 2018 ; « Je voulais sauver des vies, on m'a accusé de vouloir remplir des caisses » (Public Sénat, 8/04/2019) ; « Si je devais le refaire, je le referais autrement », « plus gros échec » (LCP, 25/06/2026).",
+  "ouv": "Ton Philippe, c'est le type des 80 km/h. Il a emmerdé toute la campagne depuis son bureau.",
+  "def": {
+   "liberte": "Il le dit lui-même : « Si je devais le refaire, je le referais autrement. » Un chef qui admet qu'on règle pas ta route depuis Paris, t'en vois souvent ?",
+   "portefeuille": "Tout le monde a cru à une pompe à fric. Lui voulait sauver des vies, pas remplir les caisses. Maladroit, ouais. Voleur, non.",
+   "ordre": "Il a tenu une règle que tout le monde détestait, et il dit aujourd'hui que c'est son plus gros échec. Tenir, puis assumer : c'est pas courant."
+  },
+  "defT": "Bon. Qu'il le reconnaisse, c'est déjà plus que les autres.",
+  "defP": "Mouais. Tu me parles pas de ce qui m'a mis en colère.",
+  "r2": {
+   "obj": "N'empêche, il recommencera. Une fois élu, ça décide à Paris et nous, on subit.",
+   "ok": "a",
+   "a": [
+    "Justement : Édouard démarre par un référendum. La première grosse décision, c'est le pays qui la prend.",
+    "comptes"
+   ],
+   "b": [
+    "Édouard met une règle d'or dans la Constitution. Au moins, la règle, on la connaît d'avance.",
+    "comptes"
+   ],
+   "aR": "Un référendum. Au moins, on nous demande notre avis.",
+   "bR": "Une règle de plus, écrite à Paris. C'est exactement ce que je lui reproche."
+  },
+  "r3": {
+   "res": "Admettons. Mais chaque année, il nous tombe une taxe de plus sur la voiture.",
+   "ok": "a",
+   "a": [
+    "Édouard l'a écrit : zéro nouvel impôt pendant cinq ans.",
+    "comptes"
+   ],
+   "b": [
+    "Édouard file la même prime pour une électrique d'occasion que pour une neuve.",
+    "energie"
+   ],
+   "aR": "Cinq ans sans nouvelle taxe. Si c'est écrit, je le garde, son papier.",
+   "bR": "Une électrique ? Même d'occasion, je la paie avec quoi ? Tu réponds pas à ma question."
+  },
+  "fin": {
+   "win": "N'empêche, un type qui dit « je me suis trompé », je m'y attendais pas.",
+   "nul": "Bon, il a reconnu son erreur, je te l'accorde. De là à voter pour lui…",
+   "lose": "Non, pour moi il reste le type des 80. Passe-moi le pain."
+  }
+ },
+ {
+  "id": "r-gj",
+  "th": "Les Gilets jaunes",
+  "type": "C",
+  "who": [
+   "rn-historique",
+   "rn-rural-recent",
+   "lfi",
+   "abstention",
+   "anarchiste"
+  ],
+  "sources": "Moratoire sur la hausse de la taxe carbone annoncé par É. Philippe le 4/12/2018 (Reporterre, 4/12/2018) ; la bonne foi ne suffit pas toujours, discours du Grand Palais (Public Sénat, 8/04/2019) ; Premier ministre jusqu'en juillet 2020.",
+  "ouv": "Les Gilets jaunes, c'était sous lui. La taxe sur le gasoil, c'était lui. Il a rien vu venir.",
+  "def": {
+   "portefeuille": "Il a tapé dans le plein de ceux qui n'avaient pas le choix, ouais. Et c'est lui qui a stoppé la hausse, en décembre 2018. La leçon, il l'a prise.",
+   "justice": "L'effort tombait sur ceux qui roulent pour aller bosser, c'était injuste. Il a reconnu après que la bonne foi, ça suffit pas pour gouverner.",
+   "ordre": "Il a rien vu venir, d'accord. Mais des mois de samedis, et il est resté à son poste. Il a suspendu la taxe, il a pas fui."
+  },
+  "defT": "Ça, c'est vrai. Il a fini par l'entendre.",
+  "defP": "Tu parles bien, mais tu passes à côté.",
+  "r2": {
+   "obj": "Sauf que rien n'a changé. Tu bosses, et à la fin du mois il reste rien.",
+   "ok": "a",
+   "a": [
+    "Avec Édouard, les heures au-delà de 35 h, c'est sans impôt ni cotisation. Dans les 1 000 € par an au SMIC.",
+    "travail"
+   ],
+   "b": [
+    "Édouard baisse de 50 milliards les impôts de production. Ça relance l'activité.",
+    "entreprises"
+   ],
+   "aR": "Mille euros nets, c'est concret. Ça, je sais ce que c'est.",
+   "bR": "Cinquante milliards pour les patrons. Et pour moi, ça ruisselle quand ?"
+  },
+  "r3": {
+   "res": "Admettons. Mais les ronds-points, c'était aussi : « on nous écoute jamais ».",
+   "ok": "a",
+   "a": [
+    "Ben justement : Édouard commence par un référendum. C'est le pays qui tranche.",
+    "comptes"
+   ],
+   "b": [
+    "Édouard annonce tout avant l'élection. Pas de mauvaise surprise.",
+    "sommaire"
+   ],
+   "aR": "Un vote où c'est nous qui décidons. C'est ce qu'on demandait.",
+   "bR": "Prévenir, c'est pas écouter. Il annonce, et nous, on encaisse."
+  },
+  "fin": {
+   "win": "N'empêche, s'il a retenu la leçon des ronds-points, ça change des autres.",
+   "nul": "Bon, il a appris quelque chose, peut-être. Je demande à voir.",
+   "lose": "Non, moi j'y étais, sur le rond-point. Je oublie pas."
+  }
+ },
+ {
+  "id": "r-493",
+  "th": "Le 49.3 sur les retraites",
+  "type": "C",
+  "who": [
+   "lfi",
+   "gauche-moderee",
+   "anarchiste",
+   "abstention"
+  ],
+  "sources": "Recours au 49.3 annoncé par É. Philippe à la tribune de l'Assemblée le samedi 29/02/2020, sur le projet de « système universel de retraite », après un Conseil des ministres convoqué sur le coronavirus (vie-publique.fr ; Public Sénat, 3/03/2020).",
+  "ouv": "Philippe, c'est le 49.3 sur les retraites, un samedi, en plein Conseil des ministres sur le virus. Le vote des députés, il s'est assis dessus.",
+  "def": {
+   "liberte": "Passer sans vote, ça marque, je sais. Mais il a envoyé personne à sa place : il est monté à la tribune le dire lui-même.",
+   "justice": "La méthode, je te la laisse. Mais l'idée, c'était un seul système de retraite, les mêmes règles pour tout le monde.",
+   "avenir": "Trente ans que chacun refile le dossier au suivant. Lui s'est cramé dessus pour que ça tienne encore quand nos gosses partiront."
+  },
+  "defT": "Je te l'accorde. Sur ce point-là, il a une cohérence.",
+  "defP": "Belle plaidoirie. Mais c'est pas ça qui me pose problème.",
+  "r2": {
+   "obj": "Et maintenant, c'est 65 ans. Il recommencera en force, dès qu'il pourra.",
+   "ok": "a",
+   "a": [
+    "Sauf que là, Édouard met les 65 ans dans son programme, avant le vote. S'il passe, c'est que le pays a dit oui.",
+    "retraites"
+   ],
+   "b": [
+    "Édouard a mis des garde-fous : aucune baisse des pensions, aucune hausse de cotisations.",
+    "retraites"
+   ],
+   "aR": "Au moins, il se cache pas. On sait contre quoi on vote.",
+   "bR": "Tu me parles du montant. Moi, je te parle de la méthode."
+  },
+  "r3": {
+   "res": "Admettons. Mais après le vote, qui décide ? Lui tout seul, comme d'habitude ?",
+   "ok": "a",
+   "a": [
+    "Non, justement : Édouard confie la gestion des retraites aux syndicats et au patronat. C'est plus le président qui décide.",
+    "retraites"
+   ],
+   "b": [
+    "Non : Édouard commence son mandat par un référendum.",
+    "comptes"
+   ],
+   "aR": "Les syndicats aux commandes. Ça, je l'attendais pas de lui.",
+   "bR": "Son référendum porte sur le budget. Pas sur ma retraite."
+  },
+  "fin": {
+   "win": "N'empêche, s'il rend la main aux syndicats, c'est plus le même homme qu'en 2020.",
+   "nul": "Bon, il annonce la couleur, c'est déjà ça. Mais le 49.3, je l'oublie pas.",
+   "lose": "Non, celui qui l'a fait une fois le refera. Sers-moi plutôt à boire."
+  }
+ },
+ {
+  "id": "r-covid",
+  "th": "La gestion du Covid",
+  "type": "C",
+  "who": [
+   "rn-historique",
+   "rn-rural-recent",
+   "primo-bardella",
+   "lfi",
+   "abstention"
+  ],
+  "sources": "Non-lieu de la Cour de justice de la République le 7/07/2025 (Le Club des juristes) ; « tout » n'a pas été « bien fait », « aucun pays n'a tout bien fait » (Europe 1, France 2). À sourcer : ses conférences de presse du printemps 2020.",
+  "ouv": "Le Covid, c'était lui. Les masques inutiles, puis obligatoires. On nous a baladés.",
+  "def": {
+   "fierte": "On savait même plus fabriquer un masque, la honte. Lui s'est pris ce mur en pleine face. Il laissera pas le pays aussi à poil.",
+   "ordre": "Les consignes changeaient tout le temps, ça rendait dingue. Mais il venait dire lui-même ce qu'on savait et ce qu'on savait pas. Quelqu'un tenait la barre.",
+   "justice": "Il le dit lui-même, tout a pas été bien fait. Cinq ans d'enquête, un non-lieu au bout. Il a répondu aux juges, comme n'importe qui."
+  },
+  "defT": "C'est vrai qu'il a pas fait le malin, lui.",
+  "defP": "Admettons, mais c'est pas ça qui m'est resté.",
+  "r2": {
+   "obj": "Et les soignants ? On les a applaudis à 20 heures, et l'hôpital est toujours à genoux.",
+   "ok": "a",
+   "a": [
+    "Édouard sort la santé de son plan d'économies. Là-dessus, il coupe pas.",
+    "comptes"
+   ],
+   "b": [
+    "Édouard mise sur la prévention : soigner tôt, avant que ça coûte cher.",
+    "comptes"
+   ],
+   "aR": "S'il touche pas à la santé, c'est déjà un engagement.",
+   "bR": "La prévention, c'est pour dans vingt ans. Les urgences, c'est ce soir."
+  },
+  "r3": {
+   "res": "Admettons. Et la prochaine crise ? On sera encore pris de court.",
+   "ok": "a",
+   "a": [
+    "On peut pas tout prévoir. Mais Édouard passe la réserve de 45 000 à 250 000 personnes : un pays qui sait se mobiliser.",
+    "defense"
+   ],
+   "b": [
+    "Édouard met une règle d'or dans la Constitution. Des comptes tenus, c'est de la marge le jour où ça casse.",
+    "comptes"
+   ],
+   "aR": "Des gens formés d'avance. En 2020, on aurait bien aimé.",
+   "bR": "Avec ta règle d'or, en 2020, on payait pas le chômage partiel. Mauvais exemple."
+  },
+  "fin": {
+   "win": "N'empêche, lui au moins sait ce que c'est, une vraie crise.",
+   "nul": "Bon, il a fait ce qu'il a pu, peut-être. Ça ne fait pas un vote.",
+   "lose": "Non, les masques, je digère pas. On change de sujet ?"
+  }
+ },
+ {
+  "id": "r-macron",
+  "th": "« Macron bis »",
+  "type": "C",
+  "who": [
+   "rn-historique",
+   "rn-rural-recent",
+   "primo-bardella",
+   "lfi",
+   "gauche-moderee",
+   "centre-hesitant",
+   "abstention",
+   "droite-ordre"
+  ],
+  "sources": "Premier ministre de 2017 à 2020 ; fondation d'Horizons en octobre 2021 ; « L'État n'est plus tenu » (RTL, 7/10/2025) ; programme en ligne, mise à jour du 12/11/2026.",
+  "ouv": "Philippe, c'est Macron en moins bavard. Trois ans Premier ministre : le bilan, c'est le sien.",
+  "def": {
+   "ordre": "Il y était, ouais. Mais il est parti en 2020, il a monté son parti, et il a fini par dire que l'État était plus tenu. Il a vu de près ce qui déconne.",
+   "justice": "Lui au moins dit ce qu'il a raté. D'autres ont gouverné avec Macron et jurent qu'ils y étaient pas.",
+   "avenir": "La différence ? Son programme est en ligne des mois avant le vote, mesure par mesure. Tu sais où il t'emmène."
+  },
+  "defT": "D'accord, c'est pas tout à fait le même. Je te l'accorde.",
+  "defP": "Mouais. Pour moi, ça ne le distingue pas de l'autre.",
+  "r2": {
+   "obj": "Macron aussi promettait. Et à la fin, il décidait seul, dans son coin.",
+   "ok": "a",
+   "a": [
+    "C'est pour ça qu'Édouard démarre par un référendum. La première décision, il la prend pas tout seul.",
+    "comptes"
+   ],
+   "b": [
+    "Édouard l'a écrit : zéro nouvel impôt pendant cinq ans.",
+    "comptes"
+   ],
+   "aR": "Un référendum d'entrée. Ça changerait.",
+   "bR": "Encore une promesse. Des promesses, l'autre en avait plein aussi."
+  },
+  "r3": {
+   "res": "Admettons qu'il soit pas Macron. Il gouverne pour qui, alors ?",
+   "ok": "a",
+   "a": [
+    "Pour ceux qu'on oublie : avec Édouard, les classes moyennes paient pas d'impôt sur le revenu pendant trois ans après une naissance.",
+    "famille"
+   ],
+   "b": [
+    "Pour ceux qui produisent : Édouard baisse de 50 milliards les impôts de production.",
+    "entreprises"
+   ],
+   "aR": "Les classes moyennes. Tiens, on existe.",
+   "bR": "Les entreprises d'abord. C'est du Macron tout craché."
+  },
+  "fin": {
+   "win": "N'empêche, un Macron qui prévient et qui consulte, c'est plus vraiment Macron.",
+   "nul": "Bon, il a pris ses distances, d'accord. Il lui en reste à prendre.",
+   "lose": "Non, c'est la même maison, je te dis. On a déjà donné."
+  }
+ },
+ {
+  "id": "r-traitre",
+  "th": "« Il a lâché Macron »",
+  "type": "C",
+  "who": [
+   "centre-hesitant",
+   "gauche-moderee",
+   "droite-liberale",
+   "droite-ordre",
+   "abstention"
+  ],
+  "sources": "Appel à une présidentielle anticipée après le vote du budget (RTL, 7/10/2025 ; LCP) ; « Je ne suis pas pour sa démission immédiate et brutale » ; départ « ordonné » (France 2, 16/10/2025) ; « quelques rats quittent le navire » (É. Dupond-Moretti).",
+  "ouv": "Ton Philippe a demandé à Macron de partir. Celui qui l'a fait Premier ministre ! Un type qui lâche son patron, je me méfie.",
+  "def": {
+   "ordre": "Il a pas demandé qu'il claque la porte : un départ propre, après le vote du budget. Il s'est fâché avec les siens plutôt que de regarder l'État couler.",
+   "fierte": "Rappelle-toi cet automne-là : un gouvernement qui saute en quelques heures, la honte. Il a dit tout haut qu'on tiendrait pas dix-huit mois comme ça.",
+   "avenir": "Dix-huit mois à attendre, c'est dix-huit mois où rien se décide. Il a préféré le dire, quitte à passer pour un traître."
+  },
+  "defT": "Vu comme ça… Ce n'était pas juste un coup de couteau.",
+  "defP": "Ça ne m'enlève pas l'idée qu'il a trahi.",
+  "r2": {
+   "obj": "N'empêche, s'il lâche son chef, il lâchera ses promesses.",
+   "ok": "a",
+   "a": [
+    "Édouard met sa règle d'or dans la Constitution, par référendum. Une fois votée, elle s'impose à lui aussi.",
+    "comptes"
+   ],
+   "b": [
+    "Édouard annonce tout avant l'élection, chiffres compris. Tu peux le lire ce soir.",
+    "sommaire"
+   ],
+   "aR": "Une règle qu'il peut plus défaire seul. Là, il se lie les mains.",
+   "bR": "Un programme, ça se range dans un tiroir le lendemain. Ça ne l'engage à rien."
+  },
+  "r3": {
+   "res": "Admettons. Mais claquer la porte, c'est facile. Il a le cran de faire ce qui fâche ?",
+   "ok": "a",
+   "a": [
+    "Regarde : Édouard met la retraite à 65 ans dans son programme, avant l'élection. Faut oser.",
+    "retraites"
+   ],
+   "b": [
+    "Édouard promet zéro baisse des pensions et zéro hausse de cotisations.",
+    "retraites"
+   ],
+   "aR": "Annoncer 65 ans avant de se faire élire… Il faut du cran, je reconnais.",
+   "bR": "Ça, c'est la partie qui fait plaisir. Je te demandais ce qui fâche."
+  },
+  "fin": {
+   "win": "N'empêche, il dit ce qui coûte, à Macron comme à nous. Ça se respecte.",
+   "nul": "Bon, ce n'était peut-être pas une trahison. Mais je garde un œil sur lui.",
+   "lose": "Non, un homme qui lâche son chef, je lui confie pas les clés."
+  }
+ },
+ {
+  "id": "r-riches",
+  "th": "« Le président des riches »",
+  "type": "C",
+  "who": [
+   "lfi",
+   "gauche-moderee",
+   "anarchiste",
+   "rn-historique",
+   "abstention"
+  ],
+  "sources": "ISF remplacé par l'IFI au budget 2018, qu'il dit « assumer » (Public Sénat, 2017) ; baisse de 5 € des APL en octobre 2017, « pas intelligent » selon lui (Public Sénat, 2017) ; réélu maire du Havre le 22/03/2026. À sourcer : maire du Havre depuis 2010.",
+  "ouv": "Philippe, c'est l'ISF supprimé et cinq euros d'APL en moins. Il gouverne pour les riches, point.",
+  "def": {
+   "justice": "Les cinq euros, c'était nul. Lui-même a dit à l'époque que c'était « pas intelligent ».",
+   "portefeuille": "Il est maire du Havre, pas de Neuilly. Là-bas, tu te fais pas réélire en oubliant les fins de mois.",
+   "avenir": "L'ISF, il assume : il voulait que l'argent s'investisse ici. Un pari sur l'emploi, pas un cadeau. T'as le droit de pas être d'accord."
+  },
+  "defT": "Bon. Au moins, il nie pas.",
+  "defP": "Ça, c'est un argument pour quelqu'un d'autre que moi.",
+  "r2": {
+   "obj": "Et aujourd'hui ? Les efforts, c'est encore pour les mêmes.",
+   "ok": "a",
+   "a": [
+    "Cette fois, Édouard supprime 50 milliards d'aides improductives aux entreprises.",
+    "entreprises"
+   ],
+   "b": [
+    "Édouard s'engage : zéro nouvel impôt pendant cinq ans.",
+    "comptes"
+   ],
+   "aR": "Cinquante milliards repris aux entreprises. Là, tu m'intéresses.",
+   "bR": "Aucun nouvel impôt, donc aucun pour les plus riches non plus. Merci du cadeau."
+  },
+  "r3": {
+   "res": "Admettons. Et ceux d'en bas, concrètement, ils y gagnent quoi ?",
+   "ok": "a",
+   "a": [
+    "Édouard verse jusqu'à 350 € par mois dès le premier enfant aux ménages les plus modestes.",
+    "famille"
+   ],
+   "b": [
+    "Édouard double les plafonds de donation. Les parents peuvent aider plus.",
+    "famille"
+   ],
+   "aR": "350 euros dès le premier. Pour un jeune couple, ça change le mois.",
+   "bR": "Donner quoi ? Chez nous, on se transmet que des dettes."
+  },
+  "fin": {
+   "win": "N'empêche, s'il reprend aux entreprises pour donner aux familles, c'est plus le même film.",
+   "nul": "Bon, il a deux ou trois mesures pour nous. Les cinq euros, je les garde en mémoire.",
+   "lose": "Non, président des riches un jour, président des riches toujours."
+  }
+ },
+ {
+  "id": "r-pnf",
+  "th": "L'enquête au Havre",
+  "type": "C",
+  "who": [
+   "rn-historique",
+   "rn-rural-recent",
+   "primo-bardella",
+   "lfi",
+   "abstention",
+   "anarchiste"
+  ],
+  "sources": "Information judiciaire ouverte le 7/05/2026 sur réquisitoire du PNF (détournement de fonds publics, favoritisme, prise illégale d'intérêts, concussion) ; É. Philippe conteste les faits, se dit « innocent » et « répondra à toutes les questions que posera la justice » (Europe 1, LCP, 20/05/2026) ; il resterait candidat même mis en examen (Brut). Il est présumé innocent.",
+  "ouv": "Et son affaire au Havre ? Un juge enquête sur lui. Tous les mêmes, je te dis.",
+  "def": {
+   "ordre": "Un juge enquête, c'est sérieux. Lui conteste, et il a dit qu'il répondrait à toutes les questions. Il gueule pas au complot.",
+   "justice": "Une enquête, c'est pas une condamnation. Présumé innocent, lui comme n'importe qui."
+  },
+  "defT": "Présumé innocent, d'accord. Je veux bien attendre.",
+  "defP": "Ça ne me rassure pas plus que ça.",
+  "r2": {
+   "obj": "Ils disent tous ça. Et à la fin, les peines, personne ne les fait.",
+   "ok": "a",
+   "a": [
+    "Édouard supprime le juge d'application des peines. Une peine prononcée, c'est une peine faite.",
+    "justice"
+   ],
+   "b": [
+    "Édouard prévoit une loi sur les prisons.",
+    "justice"
+   ],
+   "aR": "Une peine prononcée, une peine faite. Pour tout le monde, j'espère.",
+   "bR": "Des places de prison, d'accord. Mais c'est jamais les élus qui y dorment."
+  },
+  "r3": {
+   "res": "Admettons. Et s'il est mis en examen en pleine campagne ?",
+   "ok": "a",
+   "a": [
+    "Il a déjà répondu : il reste candidat et il s'explique devant les juges. Après, c'est toi qui tranches, dans l'isoloir.",
+    null
+   ],
+   "b": [
+    "Édouard veut une peine courte dès la première infraction. La fermeté, il la demande pour tout le monde.",
+    "justice"
+   ],
+   "aR": "Au moins, il se défile pas. C'est aux électeurs de voir.",
+   "bR": "La fermeté pour les autres, oui. Je te parlais de lui."
+  },
+  "fin": {
+   "win": "N'empêche, il crache pas sur les juges, lui. Ça change.",
+   "nul": "Bon, attendons la justice. Mais ça fait une ombre.",
+   "lose": "Non, tant que c'est pas réglé, ce sera sans moi."
+  }
+ }
+];
+
+const RESSORTS = {
+  portefeuille:{label:"Portefeuille", desc:"ce que ça change pour son budget"},
+  ordre:{label:"Ordre", desc:"des règles appliquées"},
+  justice:{label:"Justice", desc:"un effort partagé, des fragiles protégés"},
+  liberte:{label:"Liberté", desc:"moins de contraintes"},
+  avenir:{label:"Avenir", desc:"les jeunes, le long terme"},
+  fierte:{label:"Fierté nationale", desc:"un pays qui pèse et ne dépend de personne"}
+};
+const CRANS = ["Opposant ferme","Opposant qui hésite","Indécis","À l'écoute","Convaincu"];
+const GESTES = {
+  valeur:{nom:"objection de valeur", ok:"concéder, puis recadrer", ko:"répondre à côté"},
+  fait:{nom:"objection de fait", ok:"la preuve", ko:"la valeur"},
+  contre:{nom:"contre-attaque sur le candidat", ok:"assumer, puis contraster", ko:"l'esquive"},
+  esquive:{nom:"esquive", ok:"la question retour", ko:"l'insistance"}
+};
+
+/* ARCHÉTYPES POLITIQUES. Ils ne portent plus ni âge, ni métier, ni lien : le profil du convive en est indépendant.
+   pos = positionnement affiché (six valeurs). cand = candidat qui l'intéresse. age = tranche préférée, uniquement pour choisir entre plusieurs archétypes d'un même bord. */
+const ARCH = [
+  {id:"rn-historique", pos:"Bien à droite",   bord:"rn",       cand:"Marine Le Pen",       depart:1, age:[40,70]},
+  {id:"rn-rural-recent", pos:"Bien à droite", bord:"rn",       cand:"Marine Le Pen",       depart:1, age:[65,95]},
+  {id:"primo-bardella", pos:"Bien à droite",  bord:"rn",       cand:"Marine Le Pen",       depart:1, age:[18,34]},
+  {id:"droite-liberale", pos:"Plutôt à droite", bord:"droite",   cand:"David Lisnard",       depart:1},
+  {id:"droite-ordre", pos:"Plutôt à droite",    bord:"droite",   cand:"Bruno Retailleau",    depart:1},
+  {id:"gauche-moderee", pos:"Plutôt à gauche",  bord:"ps",       cand:"Raphaël Glucksmann",  depart:1},
+  {id:"lfi", pos:"Bien à gauche",             bord:"lfi",      cand:"Jean-Luc Mélenchon",  depart:1},
+  {id:"centre-hesitant", pos:"Centriste", bord:"hesitant", etiquette:"hésite encore",  depart:3},
+  {id:"abstention", pos:"Ne sait plus trop",      bord:"hesitant", etiquette:"ne vote plus",   depart:3},
+  {id:"anarchiste", pos:"Bien à gauche",      bord:"anar",     etiquette:"anarchiste, ne vote pas", depart:1},
+  {id:"ecolo", pos:"Plutôt à gauche",           bord:"ecolo",    etiquette:"vote écologiste", depart:1}
+];
+const COTE = { rn:"D", droite:"D", ps:"G", lfi:"G", anar:"G", ecolo:"G", hesitant:"N" };
+
+/* COMPOSITION DE LA TABLE (6 convives). « Ma famille est... » fixe les bords politiques. */
+const FAMILLES = [
+  {id:"droite", label:"Plutôt à droite",   bords:["rn","rn","rn","droite","droite","hesitant","ps"]},
+  {id:"gauche", label:"Plutôt à gauche",   bords:["lfi","lfi","ps","ps","anar","hesitant","rn"]},
+  {id:"tous",   label:"De tous les bords", bords:["rn","rn","droite","ps","lfi","hesitant","anar"]}
+];
+/* L'âge du joueur ne fixe que les profils : [lien, genre, écart d'âge, couple]. Pas de conjoint du joueur.
+   Deux convives du même couple reçoivent le même bord, ou à défaut le même côté. */
+const AGES = [
+  {label:"18-29 ans", age:24, table:[["Père","m",29,1],["Mère","f",27,1],["Grand-père","m",56,2],["Grand-mère","f",54,2],["Sœur","f",3],["Oncle","m",31],["Cousin","m",1]]},
+  {label:"30-44 ans", age:37, table:[["Père","m",29,1],["Mère","f",27,1],["Frère","m",-3,2],["Belle-sœur","f",-4,2],["Oncle","m",31],["Cousine","f",2],["Grand-mère","f",55]]},
+  {label:"45-59 ans", age:52, table:[["Mère","f",27],["Sœur","f",-3,1],["Beau-frère","m",-1,1],["Fils","m",-28],["Nièce","f",-26],["Voisin","m",6],["Tante","f",25]]},
+  {label:"60 ans et plus", age:67, table:[["Fils","m",-29,1],["Belle-fille","f",-31,1],["Fille","f",-32,2],["Gendre","m",-30,2],["Petite-fille","f",-45],["Sœur","f",-3],["Voisin","m",4]]}
+];
+// v0.12 : six convives au plus
+AGES.forEach(a => a.table = a.table.slice(0,6));
+FAMILLES[0].bords = ["rn","rn","droite","droite","hesitant","ps"];
+FAMILLES[1].bords = ["lfi","lfi","ps","anar","hesitant","rn"];
+FAMILLES[2].bords = ["rn","rn","droite","ps","lfi","hesitant"];
+const METIERS = {
+  jeune:[["étudiant","étudiante"],["alternant","alternante"],["livreur","livreuse"],["serveur","serveuse"]],
+  actif:[["infirmier","infirmière"],["chauffagiste","chauffagiste"],["comptable","comptable"],["professeur des écoles","professeure des écoles"],["commercial","commerciale"],["agriculteur","agricultrice"],["cadre bancaire","cadre bancaire"],["boulanger","boulangère"],["aide-soignant","aide-soignante"],["informaticien","informaticienne"],["patron de PME","patronne de PME"],["routier","routière"],["agent immobilier","agente immobilière"],["éducateur","éducatrice"]]
+};
+const RULES = { endlessSeuil:3, partReproches:0.5, maxReproches:2 };   // part des convives qui ouvrent par un reproche fait au candidat
+const DECORS = [
+  {nom:"Salle à manger de mamie",  mur:["#c8553d","#8d3524"]},
+  {nom:"Véranda des beaux-parents", mur:["#3f8f8a","#245a57"]},
+  {nom:"Salle des fêtes",           mur:["#c79a2e","#8a6717"]},
+  {nom:"Chalet de la cousine",      mur:["#8b5a36","#553319"]},
+  {nom:"Cuisine du voisin",         mur:["#6a6fb0","#3d4178"]}
+];
+
+const NOMS = {
+  m:[["Enzo","Lucas","Théo","Hugo","Nathan","Mathis"],["Julien","Nicolas","Sébastien","Guillaume","Mehdi","Romain"],["Patrick","Thierry","Pascal","Bruno","Didier","Christophe"],["Michel","Bernard","André","Gérard","Roger","Raymond"]],
+  f:[["Léa","Manon","Chloé","Emma","Inès","Camille"],["Aurélie","Céline","Émilie","Sandrine","Nadia","Élodie"],["Nathalie","Sylvie","Isabelle","Catherine","Véronique","Martine"],["Monique","Jacqueline","Nicole","Françoise","Colette","Yvette"]]
+};
+
+</script>
+
+<!-- Images validées dans l'atelier (facultatif : sans ce fichier, le jeu garde les visages dessinés) -->
+<script src="images/index.js"></script>
+
+<!-- ============================ MOTEUR ============================ -->
+<script>
+const $ = s => document.querySelector(s);
+const rnd = a => a[Math.floor(Math.random()*a.length)];
+const rint = (a,b) => a+Math.floor(Math.random()*(b-a+1));
+const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]} return a };
+const save = (k,v) => { try{ localStorage.setItem(k, JSON.stringify(v)) }catch(e){} };
+
+/* ---------- Visages provisoires, en 5 volets ---------- */
+const BANDS = [[0,75],[75,43],[118,37],[155,35],[190,60]];
+const SKINS = ["#f6d3b8","#eec3a0","#e0ac86","#c98f68","#a8704c","#7d4f33"];
+const HAIRC = ["#2b1d14","#4a2f1c","#6e4526","#a5682a","#d6b25e","#b3401f","#111111"];
+const PULLS = ["#b02a2a","#1f6b3a","#274b7a","#6b2d6e","#c7772a","#3b3b3b","#e8e0d0"];
+
+function makeFace(g, age){
+  const grey = age>62 || (age>48 && Math.random()<.4);
+  return {
+    skin:rnd(SKINS), pull:rnd(PULLS), expr:null,
+    hairColor: grey ? rnd(["#c9c9c9","#9a9a9a","#e8e8e8"]) : rnd(HAIRC),
+    hair: rnd(g==="m" ? ["chauve","court","court","meche","bonnet","couronne"] : ["long","long","chignon","meche","bonnet","couronne"]),
+    eyes: rnd(["normal","lunettes","fronce","fatigue","grands"]),
+    nose: rnd(g==="m" ? ["petit","gros","rouge","moustache"] : ["petit","petit","gros","rouge"]),
+    mouth: rnd(g==="m" ? ["sourire","plat","moue","plat"] : ["sourire","plat","moue","rouge"]),
+    chin: rnd(g==="m" ? ["net","barbe","bouc","double","echarpe","noeud"] : ["net","net","double","echarpe","collier"])
+  };
+}
+
+function faceSVG(p){
+  const s=p.skin, h=p.hairColor, sh="rgba(0,0,0,.16)", ink="#2a1c14";
+  let o="";
+  // cheveux longs (derrière la tête)
+  if(p.hair==="long") o+=`<path d="M30 110 Q24 26 100 24 Q176 26 170 110 L176 204 L24 204Z" fill="${h}"/>`;
+  // buste, pull de Noël, cou
+  o+=`<path d="M6 250 Q16 208 74 202 L126 202 Q184 208 194 250Z" fill="${p.pull}"/>`;
+  o+=`<path d="M20 234 l12 -10 l12 10 l12 -10 l12 10 l12 -10 l12 10 l12 -10 l12 10 l12 -10 l12 10 l12 -10 l12 10 l12 -10 l8 7" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="3"/>`;
+  o+=`<rect x="82" y="178" width="36" height="32" fill="${s}"/><rect x="82" y="196" width="36" height="8" fill="${sh}"/>`;
+  // oreilles, tête
+  o+=`<ellipse cx="38" cy="124" rx="9" ry="14" fill="${s}"/><ellipse cx="162" cy="124" rx="9" ry="14" fill="${s}"/>`;
+  o+=`<ellipse cx="100" cy="120" rx="62" ry="80" fill="${s}"/>`;
+  // menton
+  if(p.chin==="barbe") o+=`<path d="M40 132 Q46 204 100 208 Q154 204 160 132 Q152 172 124 158 Q100 150 76 158 Q48 172 40 132Z" fill="${h}"/>`;
+  if(p.chin==="bouc") o+=`<ellipse cx="100" cy="192" rx="15" ry="11" fill="${h}"/>`;
+  if(p.chin==="double") o+=`<path d="M72 194 Q100 214 128 194" fill="none" stroke="${sh}" stroke-width="4" stroke-linecap="round"/>`;
+  if(p.chin==="echarpe") o+=`<rect x="62" y="197" width="76" height="20" rx="9" fill="#f5c542"/><rect x="108" y="206" width="18" height="38" rx="5" fill="#f5c542"/>`;
+  if(p.chin==="noeud") o+=`<path d="M100 212 L78 200 V224Z M100 212 L122 200 V224Z" fill="#111"/><circle cx="100" cy="212" r="5" fill="#333"/>`;
+  if(p.chin==="collier") o+=`<path d="M78 204 Q100 226 122 204" fill="none" stroke="#f4f0e8" stroke-width="5" stroke-dasharray="1 7" stroke-linecap="round"/>`;
+  // cheveux et couvre-chefs
+  const cap=`<path d="M38 104 Q34 36 100 34 Q166 36 162 104 Q150 64 100 62 Q50 64 38 104Z" fill="${h}"/>`;
+  if(p.hair==="court"||p.hair==="chignon"||p.hair==="couronne") o+=cap;
+  if(p.hair==="long") o+=`<path d="M36 112 Q30 32 100 30 Q170 32 164 112 Q150 60 100 64 Q50 60 36 112Z" fill="${h}"/>`;
+  if(p.hair==="meche") o+=`<path d="M38 104 Q34 36 100 34 Q166 36 162 104 Q160 70 126 62 Q92 96 44 84Z" fill="${h}"/>`;
+  if(p.hair==="chauve") o+=`<path d="M40 104 Q42 84 50 76 M160 104 Q158 84 150 76" fill="none" stroke="${h}" stroke-width="7" stroke-linecap="round"/>`;
+  if(p.hair==="chignon") o+=`<circle cx="100" cy="24" r="17" fill="${h}"/>`;
+  if(p.hair==="bonnet") o+=`<path d="M40 76 Q44 14 104 16 Q150 18 160 76Z" fill="#c62828"/><rect x="34" y="62" width="132" height="17" rx="8.5" fill="#fff"/><circle cx="156" cy="20" r="11" fill="#fff"/>`;
+  if(p.hair==="couronne") o+=`<path d="M46 62 V28 L64 46 L82 24 L100 46 L118 24 L136 46 L154 28 V62Z" fill="#f5c542" stroke="#c9971a" stroke-width="2"/>`;
+  // yeux
+  const ey=104, big=p.eyes==="grands";
+  for(const x of [76,124]){
+    o+=`<ellipse cx="${x}" cy="${ey}" rx="${big?11:9}" ry="${big?9:6}" fill="#fff"/><circle cx="${x}" cy="${ey}" r="${big?4.5:3.6}" fill="${ink}"/>`;
+    if(p.eyes==="fatigue") o+=`<rect x="${x-12}" y="${ey-10}" width="24" height="9" fill="${s}"/><path d="M${x-9} ${ey+10} q9 5 18 0" fill="none" stroke="${sh}" stroke-width="3"/>`;
+  }
+  if(p.eyes==="lunettes") o+=`<circle cx="76" cy="${ey}" r="16" fill="rgba(255,255,255,.18)" stroke="${ink}" stroke-width="3"/><circle cx="124" cy="${ey}" r="16" fill="rgba(255,255,255,.18)" stroke="${ink}" stroke-width="3"/><path d="M92 ${ey} h16" stroke="${ink}" stroke-width="3"/>`;
+  // sourcils : l'expression prime sur le trait de base
+  const e=p.expr || (p.eyes==="fronce" ? "fache" : null);
+  const brow = e==="fache" ? "M62 88 L90 95 M138 88 L110 95"
+             : e==="content" ? "M62 90 Q76 80 90 90 M110 90 Q124 80 138 90"
+             : e==="perdu" ? "M62 92 L90 84 M110 90 Q124 82 138 92"
+             : "M63 89 H89 M111 89 H137";
+  o+=`<path d="${brow}" fill="none" stroke="${ink}" stroke-width="4" stroke-linecap="round"/>`;
+  // nez
+  if(p.nose==="gros") o+=`<ellipse cx="100" cy="138" rx="12" ry="9" fill="${sh}"/>`;
+  else if(p.nose==="rouge") o+=`<ellipse cx="100" cy="138" rx="11" ry="9" fill="#d9534f" opacity=".75"/>`;
+  else o+=`<path d="M97 124 Q91 141 101 144" fill="none" stroke="${sh}" stroke-width="4" stroke-linecap="round"/>`;
+  if(p.nose==="moustache") o+=`<path d="M74 154 Q88 141 100 148 Q112 141 126 154 Q112 151 100 153 Q88 151 74 154Z" fill="${h}" stroke="${h}" stroke-width="3" stroke-linejoin="round"/>`;
+  // bouche
+  const lip = p.mouth==="rouge" ? "#b3202a" : ink;
+  let m;
+  if(p.expr==="content") m=`<path d="M78 164 Q100 190 122 164Z" fill="#fff" stroke="${lip}" stroke-width="3" stroke-linejoin="round"/>`;
+  else if(p.expr==="fache") m=`<path d="M80 177 Q100 163 120 177" fill="none" stroke="${lip}" stroke-width="4.5" stroke-linecap="round"/>`;
+  else if(p.expr==="perdu") m=`<path d="M80 172 q5 -7 10 0 t10 0 t10 0 t10 0" fill="none" stroke="${lip}" stroke-width="4" stroke-linecap="round"/>`;
+  else if(p.mouth==="sourire"||p.mouth==="rouge") m=`<path d="M82 168 Q100 181 118 168" fill="none" stroke="${lip}" stroke-width="${p.mouth==="rouge"?6:4}" stroke-linecap="round"/>`;
+  else if(p.mouth==="moue") m=`<path d="M84 174 Q100 166 116 174" fill="none" stroke="${lip}" stroke-width="4" stroke-linecap="round"/>`;
+  else m=`<path d="M84 171 H116" stroke="${lip}" stroke-width="4" stroke-linecap="round"/>`;
+  return o+m;
+}
+
+const faceEl = $("#face");
+const bandEls = BANDS.map(([y,h]) => { const d=document.createElement("div"); d.className="band"; d.style.flex=h; faceEl.appendChild(d); return d; });
+function setBand(i, p, cls){
+  const [y,h]=BANDS[i], el=bandEls[i];
+  el.innerHTML=`<svg viewBox="0 ${y} 200 ${h}" preserveAspectRatio="none">${faceSVG(p)}</svg>`;
+  el.className="band"; if(cls){ void el.offsetWidth; el.classList.add(cls); }
+}
+function showFace(p){ bandEls.forEach((_,i)=>setBand(i,p)); }
+function spin(p, token, cb){
+  bandEls.forEach((el,i)=>{
+    const iv=setInterval(()=>{ if(S.token!==token) return clearInterval(iv); setBand(i, makeFace(rnd(["m","f"]), rint(20,85)), "tick"); },70);
+    setTimeout(()=>{ clearInterval(iv); if(S.token!==token) return; setBand(i,p,"lock"); if(i===BANDS.length-1) setTimeout(cb,160); }, 380+i*170);
+  });
+}
+
+
+/* ---------- État ---------- */
+let S = {token:0};
+let CFG = {cat:1, fam:"tous"};
+try{ Object.assign(CFG, JSON.parse(localStorage.getItem("bs_cfg7")||"{}")) }catch(e){}
+let TABLE = [];                                           // la tablée composée dans le menu
+function show(id){ document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on", s.id===id)); }
+const gen = age => age<30?0 : age<50?1 : age<70?2 : 3;
+const clampAge = a => Math.max(18, Math.min(95, a));
+const vote = a => a.cand ? "vote "+a.cand : a.etiquette;
+const etiquette = a => a.pos+" · "+vote(a);
+
+/* ---------- Composition de la table ---------- */
+// répartit les bords : deux convives d'un même couple reçoivent le même bord, à défaut le même côté
+function repartir(profils, bords){
+  const reste = shuffle(bords), out = new Array(profils.length), couples = {};
+  profils.forEach((p,i)=>{ if(p[3]) (couples[p[3]] = couples[p[3]]||[]).push(i); });
+  const prendre = b => reste.splice(reste.indexOf(b),1)[0];
+  for(const idx of shuffle(Object.values(couples))){
+    const doubles = [...new Set(reste.filter(b=>reste.filter(x=>x===b).length>=2))];
+    let paire;
+    if(doubles.length){ const b = rnd(doubles); paire = [prendre(b), prendre(b)]; }
+    else {
+      const cote = shuffle(["D","G"]).find(c=>reste.filter(b=>COTE[b]===c).length>=2);
+      paire = cote ? [prendre(reste.find(b=>COTE[b]===cote)), prendre(reste.find(b=>COTE[b]===cote))] : [reste.pop(), reste.pop()];
+    }
+    idx.forEach((i,k)=>out[i]=paire[k]);
+  }
+  profils.forEach((_,i)=>{ if(!out[i]) out[i] = reste.pop(); });
+  return out;
+}
+function archDe(bord, age, pris){
+  const list = ARCH.filter(a=>a.bord===bord);
+  const fit = list.filter(a=>!a.age || (age>=a.age[0] && age<=a.age[1]));
+  const pool = fit.length ? fit : list, neuf = pool.filter(a=>!pris.has(a.id));
+  const a = rnd(neuf.length ? neuf : pool); pris.add(a.id); return a;
+}
+/* IMAGES. L'atelier écrit images/index.js. Huit modèles de base : un par genre et par tranche d'âge.
+   Chaque convive reçoit le modèle de son genre et de sa tranche. Sans image, le jeu garde le visage dessiné. */
+const BS = (window.BS_IMAGES && window.BS_IMAGES.personnes) ? window.BS_IMAGES : null;
+const trancheDe = age => age<30 ? 0 : age<45 ? 1 : age<60 ? 2 : 3;
+function choisirPortrait(g, age, bord, pris){
+  if(!BS) return null;
+  const L = BS.personnes.filter(p => p.g===g && p.t===trancheDe(age)); if(!L.length) return null;
+  const libres = L.filter(p => !pris.has("pic:"+p.id)), exact = libres.filter(p => (p.b||[]).includes(bord));
+  const p = exact.length ? rnd(exact) : libres.length ? rnd(libres) : rnd(L);   // même bord si possible, sinon un visage pas encore à table
+  pris.add("pic:"+p.id); return p;
+}
+const photo = (g, pose) => BS.base + (g.pic.img[pose] || g.pic.img.narquois);
+const POSE = {content:"convaincu", fache:"ferme"};
+function person(a, lien, g, age, taken){
+  let prenom, n=0; do{ prenom = rnd(NOMS[g][gen(age)]); }while(taken.has(prenom) && ++n<30); taken.add(prenom);
+  let metier = rnd(age<26 ? METIERS.jeune : METIERS.actif)[g==="m"?0:1];
+  if(age>66) metier += " à la retraite";
+  return {a, lien, g, age, prenom, metier, face:makeFace(g,age), pic:choisirPortrait(g, age, a.bord, taken||new Set()), cran:a.depart, depart:a.depart, res:null};
+}
+function composer(cat, famId){
+  const A = AGES[cat], bords = repartir(A.table, FAMILLES.find(f=>f.id===famId).bords), taken = new Set(), pris = new Set();
+  return A.table.map(([lien,g,d],i)=>{ const age = clampAge(A.age+d); return person(archDe(bords[i], age, pris), lien, g, age, taken); });
+}
+const mini = (g, expr) => g.pic ? `<img class="pm" alt="" src="${photo(g, POSE[expr]||"narquois")}">` : `<svg viewBox="0 0 200 250">${faceSVG({...g.face, expr:expr||null})}</svg>`;
+
+/* ---------- Scène en images : fond panoramique et frise des bustes ---------- */
+function buildScene(){
+  const sc = $("#scene");
+  sc.querySelectorAll(".fondimg,.conv").forEach(e=>e.remove());
+  sc.classList.toggle("pics", !!BS); sc.classList.remove("haspic");
+  if(!BS) return;
+  const dc = (BS.decors||[]).find(d => d.nom===S.decor);
+  if(dc){ const im = el("img","fondimg"); im.alt=""; im.src = BS.base+dc.fond; im.onload = placeScene; sc.insertBefore(im, sc.firstChild); }
+  const face = $("#face");
+  S.guests.forEach((g,k)=>{ const c = el("div","conv"); c.dataset.k = k; sc.insertBefore(c, face); });
+}
+function placeScene(){
+  if(!BS) return;
+  const sc = $("#scene"), n = S.guests.length, i = S.gi, cur = S.guests[i];
+  sc.classList.toggle("haspic", !!(cur && cur.pic));
+  const convs = [...sc.querySelectorAll(".conv")], pas = convs.length ? convs[0].offsetWidth*.72 : 0;
+  convs.forEach(c=>{
+    const k = +c.dataset.k, g = S.guests[k];
+    let d = k-i; if(n>2){ if(d>n/2) d -= n; else if(d<-n/2) d += n; }
+    const saut = c.dataset.d!==undefined && Math.abs(d-(+c.dataset.d))>1;   // passe d'un bout à l'autre : sans glissement
+    c.dataset.d = d; if(saut) c.style.transition = "none";
+    if(g.pic){
+      const src = photo(g, d===0 ? (g.pose||"narquois") : "narquois");
+      let im = c.querySelector("img"); if(!im){ c.innerHTML = '<img alt="">'; im = c.firstChild; }
+      if(im.getAttribute("src")!==src) im.src = src;
+    } else if(d===0) c.innerHTML = "";
+    else if(!c.querySelector("svg")) c.innerHTML = mini(g);
+    c.classList.toggle("cur", d===0);
+    c.style.transform = `translateX(calc(-50% + ${d*pas}px)) scale(${d===0?1:.82})`;
+    c.style.filter = (d===0 ? "" : "brightness(.55) saturate(.75) ") + "drop-shadow(0 3px 7px rgba(0,0,0,.45))";
+    c.style.zIndex = d===0 ? 3 : 2;
+    if(saut){ void c.offsetWidth; c.style.transition = ""; }
+  });
+  const fond = sc.querySelector(".fondimg");
+  if(fond){ const marge = Math.max(0, fond.offsetWidth - sc.clientWidth); fond.style.transform = `translateX(${-i*(n>1 ? Math.min(70, marge/(n-1)) : 0)}px)`; }
+}
+addEventListener("resize", ()=>{ if(S.guests) placeScene(); });
+function renderSetup(fresh){
+  if(fresh || !TABLE.length) TABLE = composer(CFG.cat, CFG.fam);
+  $("#ages").innerHTML = AGES.map((a,i)=>`<button data-c="${i}" class="${i===+CFG.cat?"on":""}">${a.label}</button>`).join("");
+  $("#bords").innerHTML = FAMILLES.map(f=>`<button data-f="${f.id}" class="${f.id===CFG.fam?"on":""}">${f.label}</button>`).join("");
+  $("#rows").innerHTML = TABLE.map((g,i)=>`<div class="pc">${mini(g)}<div class="inf"><b>${g.prenom}</b>, ${g.age} ans · ${g.lien}<span class="cd">${g.a.pos}</span></div><button data-del="${i}" aria-label="Retirer">✕</button></div>`).join("");
+  $("#count").textContent = `${TABLE.length} convive${TABLE.length>1?"s":""}`;
+  $("#go").disabled = !TABLE.length;
+}
+
+/* ---------- Partie ---------- */
+function pickFil(g){
+  const rep = REPROCHES.filter(f=>f.who.includes(g.a.id) && !S.seenFils.has(f.id));
+  if(rep.length && !S.lastRep && (S.nRep||0)<RULES.maxReproches && Math.random()<RULES.partReproches) return rnd(rep);
+  const pool = FILS.filter(f=>f.who.includes(g.a.id) && g.age>=(f.ageMin||0) && g.age<=(f.ageMax||200));
+  const fresh = pool.filter(f=>!S.seenFils.has(f.id));
+  const autre = fresh.filter(f=>f.type!==S.lastType);
+  return rnd(autre.length ? autre : fresh.length ? fresh : pool);
+}
+// chaque convive reçoit son sujet et sa sensibilité avant de s'asseoir : sa fiche peut l'afficher
+function preparer(g){
+  g.cran = g.depart; g.res = null;
+  g.fil = pickFil(g); S.seenFils.add(g.fil.id);
+  S.lastRep = !!g.fil.def; if(S.lastRep) S.nRep = (S.nRep||0)+1; S.lastType = g.fil.type;
+  if(g.fil.def){ const ks = shuffle(Object.keys(g.fil.def)); g.key = "a"; g.sens = ks[0]; g.autre = ks[1]; }   // reproche : son angle, et un autre angle pour la réponse parée
+  else { g.key = rnd(["a","b"]); g.sens = g.fil.r1[g.key==="a"?"ra":"rb"]; }
+  return g;
+}
+function start(mode){
+  S = {token:S.token+1, mode, diner:0, reussis:0, log:[], seenFils:new Set(), guests:[], gi:0, M:null};
+  newDiner();
+}
+function newDiner(){
+  const base = S.mode==="diner" ? TABLE : composer(rint(0,AGES.length-1), "tous");
+  S.nRep = 0; S.lastRep = false; S.lastType = null;
+  S.guests = base.map(preparer); S.gi = 0;
+  const dc = DECORS[S.diner % DECORS.length];
+  $("#scene").style.background = `linear-gradient(${dc.mur[0]} 0,${dc.mur[0]} 60%,${dc.mur[1]} 100%)`;
+  S.decor = dc.nom; show("game"); buildScene(); arrive();
+}
+
+/* ---------- Affichage permanent ---------- */
+function hud(){
+  $("#prog").innerHTML = S.guests.map((g,k)=>{
+    const vu = k<S.gi || (k===S.gi && g.res);
+    return `<span class="pg${k===S.gi?" cur":""}${vu ? (g.cran>g.depart?" ok":" ko") : ""}">${mini(g)}</span>`;
+  }).join("");
+}
+const pct = c => (c-1)/4*100;
+function scale(g, up){
+  const sc = $("#scale");
+  if(!sc.dataset.built){
+    sc.innerHTML = `<div class="track">${CRANS.map((_,i)=>`<i style="left:${i*25}%"></i>`).join("")}<div class="from" id="skFrom"></div><div class="mk" id="skMk"></div></div><div class="ticks" id="skT">${CRANS.map((c,i)=>`<span style="left:${i*25}%">${c}</span>`).join("")}</div>`;
+    sc.dataset.built = 1;
+  }
+  $("#skFrom").style.left = pct(g.depart)+"%";
+  const mk = $("#skMk"); mk.textContent = g.prenom[0];
+  if(!up){ mk.style.transition = "none"; mk.style.left = pct(g.cran)+"%"; void mk.offsetWidth; mk.style.transition = ""; }
+  else mk.style.left = pct(g.cran)+"%";
+  [...$("#skT").children].forEach((s,i)=>s.classList.toggle("cur", i===g.cran-1));   // le libellé en gras est celui sous le curseur
+  sc.classList.remove("up"); if(up){ void sc.offsetWidth; sc.classList.add("up"); }
+}
+function stamp(hit){
+  const s = $("#stamp"), sc = $("#scene");
+  s.textContent = hit ? "Touché !" : "Paré"; s.className = "stamp "+(hit?"hit":"block"); void s.offsetWidth; s.classList.add("go");
+  sc.classList.remove("hit","block"); void sc.offsetWidth; sc.classList.add(hit?"hit":"block");
+}
+function gainBanner(g, avant){
+  const b = $("#gain");
+  b.innerHTML = `<div class="arrow">${g.cran-avant>1?"▲▲":"▲"}</div><div class="to">${CRANS[g.cran-1]}</div><div class="fromto">${g.prenom} n'est plus « ${CRANS[avant-1].toLowerCase()} »</div>`;
+  b.classList.remove("go"); void b.offsetWidth; b.classList.add("go");
+}
+function el(tag, cls, html){ const e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
+function btn(cls, text, fn){ const b=el("button","rep "+cls); b.textContent=text; b.onclick=fn; return b; }
+
+/* ---------- Conversation ---------- */
+const chat = () => $("#chat");
+// une seule couleur par interlocuteur ; l'étiquette « touché » ou « paré » ne change pas la couleur de la bulle
+function say(who, text, from, badge){
+  const m = el("div","msg "+who);
+  if(from) m.appendChild(el("span","from",from));
+  m.appendChild(document.createTextNode(text));
+  if(badge) m.appendChild(el("span","badge "+badge, badge==="hit"?"Touché":"Paré"));
+  chat().appendChild(m); chat().scrollTop = chat().scrollHeight; return m;
+}
+function typing(on){
+  const t = $("#typing"); if(t) t.remove();
+  if(on){ const m = el("div","msg them typing","•••"); m.id="typing"; chat().appendChild(m); chat().scrollTop = chat().scrollHeight; }
+}
+function later(ms, fn){ const tk = S.token; setTimeout(()=>{ if(S.token===tk) fn(); }, ms); }
+
+function arrive(){
+  const token = ++S.token, g = S.guests[S.gi];
+  S.g = g; S.M = null;
+  chat().innerHTML = ""; $("#composer").innerHTML = "";
+  $("#gname").textContent = "…"; $("#gmeta").textContent = ""; $("#gpos").textContent = ""; $("#gcand").textContent = ""; $("#gsens").textContent = ""; $("#gsensd").textContent = "";
+  hud(); scale(g);
+  $("#shL").style.background = rnd(PULLS); $("#shR").style.background = rnd(PULLS);
+  S.scroll = (S.scroll||0) - 170; $("#s1").style.backgroundPosition = (S.scroll*.5)+"px 0"; $("#s2").style.backgroundPosition = S.scroll+"px 0";
+  g.face.expr = null; g.pose = "narquois"; $("#gain").classList.remove("go");
+  placeScene();
+  const reveler = ()=>{
+    faceEl.classList.remove("spinning");
+    $("#gname").textContent = g.prenom;
+    $("#gmeta").textContent = `${g.lien} · ${g.age} ans · ${g.metier}`;
+    $("#gpos").textContent = g.a.pos; $("#gcand").textContent = "";
+    $("#gsens").textContent = RESSORTS[g.sens].label; $("#gsensd").textContent = RESSORTS[g.sens].desc;
+    startMatch();
+  };
+  if(BS && g.pic){ later(S.gi ? 800 : 350, reveler); return; }
+  faceEl.classList.add("spinning");
+  spin(g.face, token, reveler);
+}
+// déroulé d'un fil : liste d'échanges {say, a, b, ok, react(k, touché)}
+function echanges(f, key, g){
+  const L = [];
+  if(f.def) return [
+    {say:f.ouv, a:[f.def[g.sens],null], b:[f.def[g.autre],null], ok:"a", react:(k,hit)=> hit ? f.defT : f.defP+" "+SENS_DIT[g.sens]},
+    {say:f.r2.obj, a:f.r2.a, b:f.r2.b, ok:f.r2.ok, react:k=>f.r2[k+"R"]},
+    {say:f.r3.res, a:f.r3.a, b:f.r3.b, ok:f.r3.ok, react:k=>f.r3[k+"R"]}
+  ];
+  if(f.r0) L.push({say:f.ouv, a:f.r0.a, b:f.r0.b, ok:f.r0.ok, react:k=>f.r0[k+"R"]});
+  L.push({say:f.r0?null:f.ouv, a:f.r1.a, b:f.r1.b, ok:key, react:(k,hit)=>f.r1[k+(hit?"T":"P")]});
+  L.push({say:f.r2.obj, a:f.r2.a, b:f.r2.b, ok:f.r2.ok, react:k=>f.r2[k+"R"]});
+  // transition sans enjeu : aucune des deux réponses ne compte
+  if(f.pont) L.push({libre:true, say:f.pont.say, a:[f.pont.a,null], b:[f.pont.b,null], ok:null, react:k=>f.pont[k+"R"]});
+  L.push({say:f.r3.res, a:f.r3.a, b:f.r3.b, ok:f.r3.ok, react:k=>f.r3[k+"R"]});
+  return L;
+}
+function startMatch(){
+  const g = S.g, fil = g.fil;
+  S.M = {fil, L:echanges(fil, g.key, g), i:0, touches:[], stack:[]};
+  chat().appendChild(el("div","day",fil.th));
+  if(fil.tiers) say("tiers", fil.tiers, "À sa droite");
+  later(fil.tiers?700:0, ()=>{ say("them", S.M.L[0].say, g.prenom); choices(); });
+}
+// Cale la discussion sur le haut de la dernière réplique du convive (et sur le thème, s'il vient d'apparaître).
+function voirReplique(){
+  const c = chat(), ms = c.querySelectorAll(".msg.them");
+  let top = ms[ms.length-1]; if(!top) return;
+  for(let p = top.previousElementSibling; p && (p.classList.contains("day") || p.classList.contains("tiers")); p = p.previousElementSibling) top = p;
+  requestAnimationFrame(()=>{ c.style.scrollBehavior = "auto"; c.scrollTop = Math.max(0, top.offsetTop - 6); c.style.scrollBehavior = ""; });
+}
+function choices(){
+  const M = S.M, r = M.L[M.i], c = $("#composer"); c.innerHTML = "";
+  shuffle(["a","b"]).forEach(k=>c.appendChild(btn("", r[k][0], ()=>pick(k))));
+  if(S.mode==="diner" && M.stack.length) c.appendChild(btn("ghost","↩ Revenir en arrière", undo));
+  voirReplique();
+}
+function undo(){
+  const M = S.M, g = S.g, s = M.stack.pop(); if(!s) return;
+  S.token++;
+  while(chat().children.length > s.n) chat().lastChild.remove();
+  M.i = s.i; M.touches = s.touches; g.cran = s.cran; g.res = null; S.log.length = s.logLen;
+  $("#gain").classList.remove("go"); g.face.expr = null; g.pose = "narquois"; showFace(g.face); placeScene(); scale(g); choices();
+}
+function pick(k){
+  const M = S.M, g = S.g, f = M.fil, r = M.L[M.i], libre = !!r.libre, hit = !libre && k===r.ok, last = M.i===M.L.length-1;
+  M.stack.push({i:M.i, touches:M.touches.slice(), cran:g.cran, n:chat().children.length, logLen:S.log.length});
+  $("#composer").innerHTML = "";
+  say("me", r[k][0]);
+  if(!libre){ M.touches.push(hit);
+  S.log.push({who:`${g.prenom}, ${g.lien.toLowerCase()}`, fil:f.id, th:f.th, me:r[k][0], src:r[k][1], hit, note:f.sources ? "Faits cités : "+f.sources : f.aSourcer, sansMesure:!!(f.def && M.i===0)}); }
+  // sa réponse arrive en un seul message : sa réaction, puis ce qu'il enchaîne
+  let suite, res = null;
+  if(!last){ const nx = M.L[M.i+1]; suite = nx.say; }
+  else { const n = M.L.filter(x=>!x.libre).length, t = M.touches.filter(Boolean).length, gain = t===n ? 2 : t===n-1 ? 1 : 0; M.gain = gain; g.t = t; g.n = n; res = gain ? "win" : (t>0 && t===n-2) ? "nul" : "lose"; suite = f.fin[res]; }
+  const texte = r.react(k,hit) + (suite ? " " + suite : "");
+  later(350, ()=>typing(true));
+  later(1200, ()=>{
+    typing(false); say("them", texte, null, libre ? null : (hit?"hit":"block"));
+    if(!libre) stamp(hit);
+    if(!libre){ g.face.expr = hit ? "content" : "fache"; g.pose = hit ? "touche" : "ferme"; showFace(g.face); placeScene(); }
+    if(!last){ M.i++; later(500, choices); }
+    else later(900, ()=>verdict(res));
+  });
+}
+function verdict(res){
+  const g = S.g, avant = g.cran;
+  g.res = res;
+  g.face.expr = res==="win" ? "content" : res==="lose" ? "fache" : null; g.pose = res==="win" ? "convaincu" : res==="lose" ? "ferme" : "narquois"; showFace(g.face); placeScene();
+  if(res==="win" && g.cran<5){ g.cran = Math.min(5, g.cran + (S.M.gain||1)); scale(g, true); gainBanner(g, avant); }
+  hud();
+  const titre = {win:`${g.prenom} bouge` + (g.cran-avant>1 ? " de deux crans" : " d'un cran"), nul:"Pas loin", lose:`${g.prenom} ne bouge pas`}[res];
+  const texte = {win:`${CRANS[avant-1]} → ${CRANS[g.cran-1]}`, nul:`Une réponse a porté, pas assez pour bouger.`, lose:`${g.prenom} reste « ${CRANS[g.cran-1].toLowerCase()} ».`}[res];
+  chat().appendChild(el("div","out "+res, `<h3>${titre}</h3><p>${texte}</p>`));
+  const c = $("#composer"), last = S.gi>=S.guests.length-1; c.innerHTML = "";
+  c.appendChild(btn("next", last ? "Fin du dîner ▸" : "Convive suivant ▸", ()=>{ S.gi++; S.gi>=S.guests.length ? endDiner() : arrive(); }));
+  if(S.mode==="diner") c.appendChild(btn("ghost","↩ Revenir en arrière", undo));
+  chat().scrollTop = chat().scrollHeight;
+}
+
+/* ---------- Fin de dîner ---------- */
+function recapHTML(){
+  const base = "https://www.edouardphilippe.fr/programme";
+  return "<h3>Tes réponses, dans l'ordre</h3>" + (S.log.map(l =>
+    `<div><b>${l.who}</b> · ${l.th} : <span class="${l.hit?"w":"m"}">${l.hit?"Touché":"Paré"}</span><br>« ${l.me} »<em>${
+      l.src!=null ? `Programme d'É. Philippe (maj 12/11/2026) : <a href="${base}/${SRC[l.src]}" target="_blank" rel="noopener">${SRC[l.src]||"sommaire"}</a>` : (l.sansMesure ? "Défense du candidat, sans mesure du programme" : "Réponse sans mesure du programme")}${l.note?"<br>"+l.note:""}</em></div>`
+  ).join("") || "<div>Aucun échange.</div>");
+}
+let AC = null;
+addEventListener("pointerdown", ()=>{ try{ AC = AC || new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==="suspended") AC.resume(); }catch(e){} }, {passive:true});
+function son(notes, dur, vol){
+  if(!AC) return;
+  try{
+    const t0 = AC.currentTime;
+    notes.forEach((f,i)=>{
+      const o = AC.createOscillator(), g = AC.createGain(), t = t0 + i*dur*.8;
+      o.type = "triangle"; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t+.02); g.gain.exponentialRampToValueAtTime(0.0001, t+dur*2.2);
+      o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur*2.3);
+    });
+  }catch(e){}
+}
+function endDiner(){
+  const tk = ++S.token;
+  const n = S.guests.length, vusG = S.guests.filter(g=>g.res!==null);
+  const total = S.guests.filter(g=>g.cran>g.depart).length;
+  const touches = vusG.reduce((s,g)=>s+(g.t||0),0), possibles = vusG.reduce((s,g)=>s+(g.n||0),0);
+  $("#bTitle").innerHTML = `<span class="score"><b id="bScore">0</b><i>/ ${n}</i></span><span class="scoreLbl">convives ont bougé</span><span class="touches"><b id="bTouches">0</b> touche${touches>1?"s":""} sur ${possibles}</span>`;
+  $("#bSub").textContent = "";
+  $("#bGrid").innerHTML = S.guests.map(g =>
+    `<div class="voter">${mini(g)}<div class="inf"><b>${g.prenom}</b> · ${g.lien} · ${g.a.pos}<div class="mini"><span class="f" style="left:${pct(g.depart)}%"></span><span class="m" style="left:${pct(g.depart)}%"></span></div><span class="mv">${CRANS[g.depart-1]}</span></div></div>`).join("");
+  const rows = [...$("#bGrid").children], GAMME = [523.25, 587.33, 659.25, 783.99, 880, 1046.5]; let vus = 0, cumul = 0;
+  S.guests.forEach((g,i)=> setTimeout(()=>{
+    if(S.token!==tk) return;
+    const row = rows[i], d = g.cran-g.depart, tt = g.res===null ? "" : ` · ${g.t||0} touche${(g.t||0)>1?"s":""} sur ${g.n||0}`;
+    cumul += g.t||0; $("#bTouches").textContent = cumul;
+    if(d>0){
+      row.classList.add("up"); row.querySelector(".m").style.left = pct(g.cran)+"%";
+      row.querySelector("img.pm") && (row.querySelector("img.pm").src = photo(g,"convaincu"));
+      row.querySelector(".mv").textContent = `${CRANS[g.depart-1]} → ${CRANS[g.cran-1]}` + tt;
+      const f = GAMME[Math.min(vus, GAMME.length-1)]; son(d>1 ? [f, f*1.25, f*1.5] : [f, f*1.25], .13, .13);
+      const sc = $("#bScore"); sc.textContent = ++vus; sc.classList.remove("bump"); void sc.offsetWidth; sc.classList.add("bump");
+    } else {
+      row.classList.add("flat"); if(g.res!==null) son([155], .09, .05);
+      row.querySelector(".mv").textContent = g.res===null ? "pas vu ce soir" : `${CRANS[g.cran-1]} · n'a pas bougé` + tt;
+    }
+    if(i===n-1) $("#bSub").textContent = total===0 ? "Personne n'a bougé. Reprends de la bûche." : total===n ? "Carton plein. Même tonton." : total*2>=n ? "Belle tablée." : "C'est un début.";
+  }, 600+i*750));
+  const b1 = $("#bNext"), b2 = $("#bAlt");
+  b1.textContent = S.mode==="diner" ? "Rejouer ce dîner" : "Nouvelle partie"; b1.onclick = ()=>start(S.mode);
+  b2.style.display = S.mode==="diner" ? "" : "none"; b2.textContent = "Changer les invités"; b2.onclick = ()=>{ renderSetup(); show("setup"); };
+  $("#bRecap").innerHTML = "";
+  show("bilan"); $("#bilan").scrollTop = 0;
+}
+
+/* ---------- Menus et clavier ---------- */
+$("#mDiner").onclick = ()=>{ renderSetup(); show("setup"); };
+$("#mRapide").onclick = ()=>start("rapide");
+$("#bMenu").onclick = ()=>show("menu");
+$("#sBack").onclick = ()=>show("menu");
+$("#quit").onclick = ()=>{ S.gi>0 || (S.M && S.M.touches.length) ? endDiner() : (S.token++, show("menu")); };
+$("#ages").onclick = e=>{ const c = e.target.dataset.c; if(c==null) return; CFG.cat = +c; renderSetup(true); };
+$("#bords").onclick = e=>{ const f = e.target.dataset.f; if(!f) return; CFG.fam = f; renderSetup(true); };
+$("#tRnd").onclick = ()=>renderSetup(true);
+$("#rows").onclick = e=>{ const d = e.target.dataset.del; if(d!=null){ TABLE.splice(+d,1); renderSetup(); } };
+$("#go").onclick = ()=>{ save("bs_cfg7", CFG); start("diner"); };
+document.addEventListener("keydown", e=>{
+  if(!$("#game").classList.contains("on")) return;
+  const btns=[...document.querySelectorAll("#composer .rep:not(.ghost)")], nx=btns.find(b=>b.classList.contains("next"));
+  if(/^[12]$/.test(e.key) && btns[e.key-1] && !nx) btns[e.key-1].click();
+  if((e.key===" "||e.key==="Enter") && nx){ e.preventDefault(); nx.click(); }
+  if(e.key==="Backspace"){ const u=document.querySelector("#composer .rep.ghost"); if(u) u.click(); }
+});
+showFace(makeFace("m",55));
+</script>
+</body>
+</html>
