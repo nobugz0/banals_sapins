@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Banals Sapins (prototype v0.13)</title>
+<title>Banals Sapins (prototype v0.14)</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:#1b1210;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#2a1c14;-webkit-tap-highlight-color:transparent}
@@ -267,6 +267,17 @@ h1 small{display:block;font-size:14px;font-weight:500;letter-spacing:0;opacity:.
 .voter{border:2px solid transparent;transition:border-color .3s}
 .voter.up{border-color:#5fd07a}
 .voter .mini .m{transition:left .7s cubic-bezier(.3,1.25,.5,1),background .2s}
+/* v0.14 */
+.fact{padding:5px 9px 6px}
+.fact.pol{display:flex;flex-wrap:wrap;align-items:center;column-gap:7px;row-gap:1px;align-content:flex-start}
+.card .fact.pol b{display:inline;font-size:17px}
+.fact.pol em{margin-top:0;white-space:nowrap}
+.fact.pol em:empty{display:none}
+.fact.pol #gmeta{flex-basis:100%;margin-top:1px}
+.fact.sen small{display:inline;margin-right:5px;font-size:9px}
+.card .fact.sen b{display:inline;font-size:15px}
+.fact.sen #gsensd{margin-top:2px}
+.scale{margin-top:14px}
 </style>
 </head>
 <body>
@@ -308,7 +319,7 @@ h1 small{display:block;font-size:14px;font-weight:500;letter-spacing:0;opacity:.
     </div>
     <div class="card">
       <div class="facts">
-        <div class="fact pol"><b id="gname"></b><span id="gmeta"></span><em id="gpos"></em><span id="gcand" hidden></span></div>
+        <div class="fact pol"><b id="gname"></b><em id="gpos"></em><span id="gmeta"></span><span id="gcand" hidden></span></div>
         <div class="fact sen"><small>Sensible à</small><b id="gsens"></b><span id="gsensd"></span></div>
       </div>
       <div class="scale" id="scale"></div>
